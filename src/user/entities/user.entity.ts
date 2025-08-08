@@ -1,25 +1,37 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
-@Entity()
+@Entity({ name: 'users' })
 export class User {
-    @PrimaryGeneratedColumn()
-    uuid: string;
+  @PrimaryGeneratedColumn('uuid')
+  uuid: string;
 
-    @Column()
-    firstName: string;
+  @Column()
+  slug: string;
 
-    @Column()
-    lastName: string;
+  @Column()
+  firstName: string;
 
-    @Column()
-    email: string;
+  @Column()
+  lastName: string;
 
-    @Column()
-    password: string;
+  @Column({ unique: true, nullable: true })
+  email: string;
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @Column()
+  password: string;
 
-    @UpdateDateColumn()
-    updatedAt: Date;
+  @Column({ default: false })
+  isGoogleAccount: boolean;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }
