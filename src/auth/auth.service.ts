@@ -25,7 +25,7 @@ export class AuthService {
     const isMatch = await bcrypt.compare(password, user.encryptedPassword)
     if(!isMatch)
       throw new UnauthorizedException({
-        password: 'La contraseña que ingresaste es incorrecta.'
+        errors: { password: 'La contraseña que ingresaste es incorrecta.' }
       })
 
     // todo: chequear emailConfirmed si lo requieres
@@ -36,7 +36,9 @@ export class AuthService {
     const user = await this.validateUser(dto.email, dto.password)
     if(!user)
       throw new NotFoundException({
-        email: 'No existe un usuario con ese correo electrónico.'
+        errors: {
+          email: 'No existe un usuario con ese correo electrónico.'
+        }
       })
 
     const payload = { sub: user.uuid, email: user.email }

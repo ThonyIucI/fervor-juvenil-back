@@ -29,8 +29,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = exceptionResponse
       }
       else if(typeof exceptionResponse === 'object') {
-        errors = exceptionResponse.errors
-        message = exceptionResponse.message
+        errors = exceptionResponse?.errors
+        message = exceptionResponse?.message
       }
 
       response.status(status).json({
