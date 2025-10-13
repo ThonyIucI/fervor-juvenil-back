@@ -5,6 +5,7 @@ import { SnakeNamingStrategy } from 'typeorm-naming-strategies'
 import { join } from 'path'
 
 import { AuthModule } from './auth/auth.module'
+import { HealthController } from './health/health.controller'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 
@@ -33,7 +34,7 @@ import { AppService } from './app.service'
     }),
     AuthModule
   ],
-  controllers: [ AppController ],
+  controllers: [ AppController, HealthController ],
   providers  : [ AppService ]
 })
 export class AppModule {}
