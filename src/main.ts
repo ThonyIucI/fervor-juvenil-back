@@ -18,7 +18,9 @@ async function bootstrap() {
 
   // Pipe de validación global personalizado (mensajes en español)
   app.useGlobalPipes(new SpanishValidationPipe())
+  const port = process.env.PORT || 3006
 
-  await app.listen(process.env.APP_PORT ?? 3006)
+  await app.listen(port)
+  console.log(`🚀 App running on port ${port}`)
 }
 bootstrap()
