@@ -34,4 +34,4 @@ ENV APP_PORT=$APP_PORT
 
 EXPOSE $APP_PORT
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
