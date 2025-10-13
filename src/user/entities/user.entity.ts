@@ -62,7 +62,7 @@ export class User {
     user.lastName = fields.lastName.trim()
     user.slug = this.buildSlug(fields.firstName, fields.lastName)
     user.email = fields.email.toLowerCase()
-    user.changePassword(fields.password)
+    await user.changePassword(fields.password)
     user.createdAt = new Date()
     user.updatedAt = new Date()
 
