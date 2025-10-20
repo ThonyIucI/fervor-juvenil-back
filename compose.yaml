@@ -1,8 +1,24 @@
+# ========================================
+# DOCKER COMPOSE - TODO EN CONTENEDORES
+# ========================================
+# Este archivo levanta tanto la DB como el backend en Docker.
+#
+# Comandos útiles:
+#   docker compose up -d              → Inicia todo (DB + backend)
+#   docker compose restart api        → Reinicia SOLO el backend
+#   docker compose restart db         → Reinicia SOLO la DB
+#   docker compose down               → Detiene y elimina contenedores
+#   docker compose logs -f api        → Ver logs del backend
+#   docker compose logs -f db         → Ver logs de la DB
+#
+# Para desarrollo con hot reload local, usa compose.local.yaml
+# ========================================
+
 services:
   api:
-    build: 
+    build:
      context: .
-     target: builder # Usa la etapa de construcción para desarrollo
+     target: builder
     container_name: nestjs_container
     env_file: .env
     depends_on:

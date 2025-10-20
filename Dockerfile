@@ -30,12 +30,12 @@ COPY --from=builder /usr/src/app/dist ./dist
 
 # Variables de entorno (se sobrescriben en docker-compose)
 ENV NODE_ENV=production
-ENV PORT=$PORT
+ENV PORT=3006
 
-EXPOSE $PORT
+EXPOSE 3006
 
 CMD ["node", "dist/src/main.js"]
 
 # Health check para Render
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3006/health || exit 1

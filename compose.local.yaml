@@ -1,0 +1,42 @@
+# ========================================
+# DOCKER COMPOSE - SOLO BASE DE DATOS
+# ========================================
+# Este archivo levanta SOLO PostgreSQL en Docker.
+# El backend corre localmente con: npm run start:dev
+#
+# Uso:
+#   docker compose -f compose.local.yaml up -d    → Inicia solo la DB
+#   npm run start:dev                             → Inicia el backend local
+#   docker compose -f compose.local.yaml down     → Detiene la DB
+#
+# Ventajas:
+#   ✅ Hot reload instantáneo (sin reconstruir contenedores)
+#   ✅ Debugging más fácil
+#   ✅ Cambias .env y la app se reinicia automáticamente
+#   ✅ Logs directos en tu terminal
+#
+# IMPORTANTE: Antes de usar esto, actualiza tu .env:
+#   DB_HOST=localhost   (en lugar de 'db')
+# ========================================
+
+services:
+  db:
+    image: postgres:17
+    container_name: postgres_container_local
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"  # Puerto estándar para conexión local
+    volumes:
+      - postgres_data_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data_local:

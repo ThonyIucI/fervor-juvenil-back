@@ -12,24 +12,37 @@ import { AppService } from './app.service'
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: '.env',
-      isGlobal   : true
+      isGlobal: true
     }),
     TypeOrmModule.forRootAsync({
       imports   : [ ConfigModule ],
-      useFactory: (config: ConfigService) => ({
-        type            : 'postgres',
-        host            : config.get('DB_HOST'),
-        port            : config.get('DB_PORT'),
-        username        : config.get('DB_USERNAME'),
-        password        : config.get('DB_PASSWORD'),
-        database        : config.get('DB_NAME'),
-        entities        : [ join(__dirname, '**', '*.entity.{ts,js}') ],
-        migrations      : [ join(__dirname, '..', 'migrations', '*.{ts,js}') ],
-        synchronize     : false,
-        namingStrategy  : new SnakeNamingStrategy(),
-        autoLoadEntities: true
-      }),
+      useFactory: (config: ConfigService) => {
+        const databaseUrl = config.get('DATABASE_URL')
+        if(databaseUrl)
+          return {
+            type            : 'postgres',
+            url             : databaseUrl,
+            entities        : [ join(__dirname, '**', '*.entity.{ts,js}') ],
+            migrations      : [ join(__dirname, '..', 'migrations', '*.{ts,js}') ],
+            synchronize     : false,
+            namingStrategy  : new SnakeNamingStrategy(),
+            autoLoadEntities: true,
+            ssl             : { rejectUnauthorized: false }
+          }
+
+        return {
+          type            : 'postgres',
+          host            : config.get('DB_HOST'),
+          port            : config.get('DB_PORT'),
+          username        : config.get('DB_USERNAME'),
+          password        : config.get('DB_PASSWORD'),
+          database        : config.get('DB_NAME'),
+          entities        : [ join(__dirname, '**', '*.entity.{ts,js}') ],
+          migrations      : [ join(__dirname, '..', 'migrations', '*.{ts,js}') ],
+          synchronize     : false,
+          namingStrategy  : new SnakeNamingStrategy(),
+          autoLoadEntities: true
+        }},
       inject: [ ConfigService ]
     }),
     AuthModule
