@@ -19,7 +19,7 @@ Scenario: Importar usuarios y perfiles desde archivo válido
 Scenario: Crear superadministrador por defecto
   Given que ejecuto el seeder inicial
   When se crean los datos por defecto
-  Then debe existir un usuario con el email "afffervorjuvenil@gmail.com" con rol "superadmin"
+  Then debe existir un usuario con el email "affervorjuvenil@gmail.com" con rol "superadmin"
 
 # 3 Feature: Login y autenticación de usuarios
 
