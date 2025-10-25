@@ -22,7 +22,7 @@ export class GuardianSchema {
   @Column({ type: 'varchar', length: 120 })
     fullName: string
 
-  @Column({ type: 'varchar', length: 20, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
     phone: string
 
   @Column({ type: 'varchar', length: 120, nullable: true })
