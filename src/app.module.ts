@@ -18,19 +18,40 @@ import { AppService } from './app.service'
     }),
     TypeOrmModule.forRootAsync({
       imports   : [ ConfigModule ],
-      useFactory: (config: ConfigService) => ({
-        type            : 'postgres',
-        host            : config.get('DB_HOST'),
-        port            : config.get('DB_PORT'),
-        username        : config.get('DB_USERNAME'),
-        password        : config.get('DB_PASSWORD'),
-        database        : config.get('DB_NAME'),
-        entities        : [ join(__dirname, '**', '*.entity.{ts,js}'), join(__dirname, '**', '*.schema.{ts,js}') ],
-        migrations      : [ join(__dirname, '..', 'migrations', '*.{ts,js}') ],
-        synchronize     : false,
-        namingStrategy  : new SnakeNamingStrategy(),
-        autoLoadEntities: true
-      }),
+      useFactory: (config: ConfigService) => {
+        const databaseUrl = config.get('DATABASE_URL')
+
+        // Prioriza DATABASE_URL si está disponible
+        if(databaseUrl) {
+          return {
+            type            : 'postgres',
+            url             : databaseUrl,
+            entities        : [ join(__dirname, '**', '*.entity.{ts,js}'), join(__dirname, '**', '*.schema.{ts,js}') ],
+            migrations      : [ join(__dirname, '..', 'migrations', '*.{ts,js}') ],
+            synchronize     : false,
+            namingStrategy  : new SnakeNamingStrategy(),
+            autoLoadEntities: true,
+            ssl             : {
+              rejectUnauthorized: false // Necesario para conexiones remotas como Render
+            }
+          }
+        }
+
+        // Usa variables individuales para desarrollo local
+        return {
+          type            : 'postgres',
+          host            : config.get('DB_HOST'),
+          port            : config.get('DB_PORT'),
+          username        : config.get('DB_USERNAME'),
+          password        : config.get('DB_PASSWORD'),
+          database        : config.get('DB_NAME'),
+          entities        : [ join(__dirname, '**', '*.entity.{ts,js}'), join(__dirname, '**', '*.schema.{ts,js}') ],
+          migrations      : [ join(__dirname, '..', 'migrations', '*.{ts,js}') ],
+          synchronize     : false,
+          namingStrategy  : new SnakeNamingStrategy(),
+          autoLoadEntities: true
+        }
+      },
       inject: [ ConfigService ]
     }),
     AuthModule
