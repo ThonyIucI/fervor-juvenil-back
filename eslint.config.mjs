@@ -7,115 +7,162 @@ import globals from 'globals'
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'eslint.config.mjs'],
+    ignores: [
+      'dist',
+      'dist.backup',
+      'node_modules',
+      'coverage',
+      'eslint.config.mjs',
+      '*.js',
+      '*.d.ts',
+      '*.js.map'
+    ]
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
     plugins: {
       'simple-import-sort': simpleImportSort,
-      import: eslintPluginImport,
+      'import': eslintPluginImport
     },
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
         sourceType: 'module',
+        project: './tsconfig.json'
       },
       globals: {
         ...globals.node,
         ...globals.jest,
-        Express: 'writable',
-      },
+        Express: 'writable'
+      }
     },
     rules: {
+      // Import sorting
       'simple-import-sort/imports': [
         'error',
         {
           groups: [
-            ['^@nestjs', '^typeorm', '^@?\\w'],
-            ['^(@|components)(/.*|$)'],
-            ['^\\u0000'],
+            // NestJS y TypeORM primero
+            ['^@nestjs', '^typeorm'],
+            // Paquetes externos
+            ['^@?\\w'],
+            // Imports de src/ (alias)
+            ['^src/'],
+            // Imports relativos del parent
             ['^\\.\\.(?!/?$)', '^\\.\\./?$'],
+            // Imports relativos del mismo directorio
             ['^\\./(?=.*/)(?!/?$)', '^\\.(?!/?$)', '^\\./?$'],
-          ],
-        },
+            // Side effect imports
+            ['^\\u0000']
+          ]
+        }
       ],
       'simple-import-sort/exports': 'error',
       'import/first': 'error',
       'import/newline-after-import': 'error',
       'import/no-duplicates': 'error',
 
-      '@typescript-eslint/no-explicit-any': 'off',
-      'no-extra-semi': 'warn',
-      '@typescript-eslint/no-var-requires': 0,
-      'no-undef': 'error',
+      // TypeScript específico
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_'
+        }
+      ],
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
+      '@typescript-eslint/no-var-requires': 'off',
+      '@typescript-eslint/interface-name-prefix': 'off',
+      '@typescript-eslint/naming-convention': [
+        'error',
+        {
+          selector: 'interface',
+          format: ['PascalCase']
+          // Permitimos interfaces con prefijo I (ej: IUserRepository)
+        }
+      ],
 
+      // Código limpio
+      'no-console': 'warn',
+      'no-debugger': 'error',
+      'no-alert': 'error',
+      'no-undef': 'error',
+      'no-extra-semi': 'warn',
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-with': 'error',
+      'no-mixed-spaces-and-tabs': 'error',
+      'no-trailing-spaces': 'error',
+
+      // Espaciado y formato
       'comma-spacing': ['error', { before: false, after: true }],
       'arrow-body-style': ['error', 'as-needed'],
       'arrow-spacing': 'error',
-      'no-empty': [2, { allowEmptyCatch: true }],
-      'no-with': 2,
-      'no-mixed-spaces-and-tabs': 2,
       'no-multiple-empty-lines': ['error', { max: 1, maxEOF: 1 }],
       'padded-blocks': ['error', 'never'],
       'padding-line-between-statements': [
         'error',
         { blankLine: 'always', prev: '*', next: 'return' },
-      ],
-      'no-multi-str': 2,
-      'dot-location': [2, 'property'],
-      'operator-linebreak': [2, 'after'],
-      'quote-props': [2, 'as-needed', { keywords: true }],
-      'space-unary-ops': [2, { words: false, nonwords: false }],
-      'no-restricted-syntax': [
-        'warn',
-        {
-          selector:
-            "CallExpression[callee.object.name='console'][callee.property.name=/^(log|warn|error|info|trace)$/]",
-          message: 'Unexpected console call',
-        },
+        { blankLine: 'always', prev: ['const', 'let', 'var'], next: '*' },
+        { blankLine: 'any', prev: ['const', 'let', 'var'], next: ['const', 'let', 'var'] }
       ],
       'object-curly-spacing': ['error', 'always'],
       'space-before-function-paren': [
-        2,
-        { anonymous: 'ignore', named: 'never' },
+        'error',
+        { anonymous: 'ignore', named: 'never', asyncArrow: 'always' }
       ],
-      'no-spaced-func': 2,
-      'space-in-parens': [2, 'never'],
-      semi: [2, 'never'],
-      'comma-dangle': [2, 'never'],
-      'no-trailing-spaces': 2,
-      yoda: [2, 'never'],
-      'comma-style': [2, 'last'],
-      curly: [2, 'multi', 'consistent'],
-      'eol-last': 2,
-      'wrap-iife': 2,
-      'space-infix-ops': 2,
+      'space-in-parens': ['error', 'never'],
+      'semi': ['error', 'never'],
+      'comma-dangle': ['error', 'never'],
+      'yoda': ['error', 'never'],
+      'comma-style': ['error', 'last'],
+      'curly': ['error', 'multi-line', 'consistent'],
+      'eol-last': 'error',
+      'wrap-iife': 'error',
+      'space-infix-ops': 'error',
       'keyword-spacing': [
-        2,
+        'error',
         {
           overrides: {
-            if: { after: false },
-            while: { before: true },
-            catch: { before: true },
-          },
-        },
+            'if': { after: false },
+            'while': { before: true },
+            'catch': { before: true }
+          }
+        }
       ],
-      'spaced-comment': [2, 'always'],
-      'space-before-blocks': [2, 'always'],
-      'key-spacing': [2, { align: 'colon' }],
-      'array-bracket-spacing': [2, 'always'],
-      indent: [2, 2, { SwitchCase: 1 }],
-      quotes: [2, 'single', { avoidEscape: true }],
+      'spaced-comment': ['error', 'always'],
+      'space-before-blocks': ['error', 'always'],
+      'key-spacing': ['error', { align: 'colon' }],
+      'array-bracket-spacing': ['error', 'always'],
+      'indent': ['error', 2, { SwitchCase: 1 }],
+      'quotes': ['error', 'single', { avoidEscape: true }],
       'max-len': [
         'error',
         {
-          code: 150,
+          code: 120,
           ignoreUrls: true,
           ignoreStrings: true,
-          ignorePattern: '^\\s*var\\s.+=\\s*require\\s*\\(',
-        },
+          ignoreTemplateLiterals: true,
+          ignoreComments: true,
+          ignorePattern: '^\\s*var\\s.+=\\s*require\\s*\\('
+        }
       ],
-    },
+
+      // Mejores prácticas
+      'prefer-const': 'error',
+      'no-var': 'error',
+      'prefer-arrow-callback': 'error',
+      'prefer-template': 'error',
+      'object-shorthand': ['error', 'always'],
+      'prefer-destructuring': [
+        'error',
+        {
+          array: false,
+          object: true
+        }
+      ]
+    }
   }
 )
