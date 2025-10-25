@@ -5,16 +5,18 @@ import {
   HttpException,
   HttpStatus
 } from '@nestjs/common'
+
 import { Request, Response } from 'express'
 
-interface ExceptionResponse{
-  statusCode: number,
-  message: string,
-  errors:string[]
+interface ExceptionResponse {
+  statusCode: number
+  message: string
+  errors?: string[] | Record<string, string>
 }
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  catch(exception: any, host: ArgumentsHost) {
+  catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp()
     const response = ctx.getResponse<Response>()
     const request = ctx.getRequest<Request>()
@@ -24,13 +26,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
       const exceptionResponse = exception.getResponse() as (string | ExceptionResponse)
 
       let message = ''
-      let errors = []
+      let errors: string[] | Record<string, string> | undefined = undefined
+
       if(typeof exceptionResponse === 'string') {
         message = exceptionResponse
       }
-      else if(typeof exceptionResponse === 'object') {
-        errors = exceptionResponse?.errors
-        message = exceptionResponse?.message
+      else if(typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+        const { errors: responseErrors, message: responseMessage } = exceptionResponse
+
+        errors = responseErrors
+        message = responseMessage
       }
 
       response.status(status).json({

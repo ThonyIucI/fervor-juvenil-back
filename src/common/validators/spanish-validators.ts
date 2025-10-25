@@ -17,6 +17,7 @@ export function isNotEmptySpanish(
 ) {
   return function (object: object, propertyName: string) {
     const name = fieldName || propertyName
+
     registerDecorator({
       name   : 'isRequired',
       target : object.constructor,
@@ -26,7 +27,7 @@ export function isNotEmptySpanish(
         ...validationOptions
       },
       validator: {
-        validate(value: any) {
+        validate(value: unknown) {
           return (
             value !== null &&
             value !== undefined &&
@@ -53,7 +54,7 @@ export function IsEmailSpanish(
         ...validationOptions
       },
       validator: {
-        validate(value: any) {
+        validate(value: unknown) {
           return typeof value === 'string' && isEmailFn(value)
         }
       }
@@ -77,7 +78,7 @@ export function MinLengthSpanish(
         ...validationOptions
       },
       validator: {
-        validate(value: any) {
+        validate(value: unknown) {
           if(typeof value !== 'string') return false
 
           return value.length >= min

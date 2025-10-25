@@ -1,7 +1,10 @@
 # compiled output
 /dist
+/dist.backup
 /node_modules
 /build
+*.js.map
+*.d.ts
 
 # Logs
 logs

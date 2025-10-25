@@ -1,16 +1,23 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PassportStrategy } from '@nestjs/passport'
-import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+
 import { ExtractJwt, Strategy } from 'passport-jwt'
-import { User } from 'src/user/entities/user.entity'
+
+import { FindUserByUuidUseCase } from 'src/user/application/use-cases/find-user-by-uuid.use-case'
+
+interface JwtPayload {
+  sub: string
+  email: string
+  iat?: number
+  exp?: number
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    private configService: ConfigService,
-    @InjectRepository(User) private usersRepo: Repository<User>
+    private readonly configService: ConfigService,
+    private readonly findUserByUuidUseCase: FindUserByUuidUseCase
   ) {
     super({
       jwtFromRequest  : ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -19,15 +26,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     })
   }
 
-  async validate(payload: any) {
-    const user = await this.usersRepo.findOne({ where: { uuid: payload.sub } })
+  async validate(payload: JwtPayload) {
+    const user = await this.findUserByUuidUseCase.execute(payload.sub)
+
     if(!user) return null
 
     return {
-      uuid     : user.uuid,
-      email    : user.email,
-      firstName: user.firstName,
-      lastName : user.lastName
+      uuid     : user.getUuid(),
+      email    : user.getEmail(),
+      firstName: user.getFirstName(),
+      lastName : user.getLastName()
     }
   }
 }
