@@ -25,7 +25,7 @@ import { AppService } from './app.service'
         username        : config.get('DB_USERNAME'),
         password        : config.get('DB_PASSWORD'),
         database        : config.get('DB_NAME'),
-        entities        : [ join(__dirname, '**', '*.entity.{ts,js}') ],
+        entities        : [ join(__dirname, '**', '*.entity.{ts,js}'), join(__dirname, '**', '*.schema.{ts,js}') ],
         migrations      : [ join(__dirname, '..', 'migrations', '*.{ts,js}') ],
         synchronize     : false,
         namingStrategy  : new SnakeNamingStrategy(),

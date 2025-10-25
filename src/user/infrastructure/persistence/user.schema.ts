@@ -2,13 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn
 } from 'typeorm'
 
 @Entity({ name: 'users' })
 export class UserSchema {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('uuid')
     uuid: string
 
   @Column()
@@ -20,11 +20,17 @@ export class UserSchema {
   @Column()
     lastName: string
 
-  @Column({ unique: true, nullable: true })
+  @Column({ type: 'varchar', length: 150, unique: true, nullable: true })
     email: string
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
     password: string
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+    dni: string
+
+  @Column({ type: 'boolean', default: true })
+    isActive: boolean
 
   @Column({ default: false })
     isGoogleAccount: boolean
