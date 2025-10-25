@@ -337,6 +337,122 @@ Al crear un nuevo módulo, **sigue la estructura del módulo User**:
 
 **Consulta [src/user/README.md](src/user/README.md) para ejemplos detallados.**
 
+## Database Schema Standards
+
+### UUID Management
+- **ALWAYS use UUID version 7** for all primary keys
+- Configure TypeORM schemas with `@PrimaryColumn('uuid')` instead of `@PrimaryGeneratedColumn('uuid')`
+- UUIDs must be generated from the backend application (not database auto-generation)
+- DO NOT use `uuid_generate_v4()` or any database-level UUID generation
+- **Reference**: See [context/db-structure.sql](context/db-structure.sql) for complete database schema
+
+### Naming Conventions
+- **ALL database column names MUST be in English**
+- Use camelCase in TypeORM schemas (automatically converted to snake_case by SnakeNamingStrategy)
+- Never use Spanish names in database schemas or migrations
+- Table names: plural, snake_case (e.g., `user_profiles`, `user_roles`)
+
+### Migration Guidelines
+- Test migrations before committing
+- Handle existing data appropriately (use `ALTER COLUMN` instead of `DROP/ADD` when possible)
+- Always provide `down` migration for rollback capability
+- Review generated migrations and fix any issues before running
+- Keep [context/db-structure.sql](context/db-structure.sql) updated with schema changes
+
+## Coding Standards & Best Practices
+
+### TypeScript Standards
+- Use strict TypeScript mode
+- Prefer `const` over `let`, avoid `var`
+- Use explicit return types for functions
+- Use interfaces for object shapes, types for unions/intersections
+- Avoid `any` type - use `unknown` if type is truly unknown
+
+### NestJS Conventions
+- One responsibility per class (Single Responsibility Principle)
+- Use dependency injection for all services
+- Controllers should be thin - delegate logic to use cases
+- Use DTOs for all request/response bodies
+- Apply validation pipes to all endpoints
+
+### Testing Standards
+- Write unit tests for all use cases
+- Write integration tests for repositories
+- Write e2e tests for critical flows
+- Aim for >80% code coverage
+- Test files: `*.spec.ts` for unit tests, `*.e2e-spec.ts` for e2e tests
+- Use descriptive test names: `should return user when valid id is provided`
+
+### File Naming Conventions
+- **Kebab-case** for file names: `create-user.use-case.ts`
+- **PascalCase** for class names: `CreateUserUseCase`
+- **camelCase** for variables and functions: `createUser()`
+- Test files: Same name as source + `.spec.ts`: `create-user.use-case.spec.ts`
+
+### Import Organization
+1. External libraries (React, NestJS, etc.)
+2. Internal absolute imports (from src/)
+3. Relative imports (../, ./)
+4. Blank line between groups
+
+Example:
+```typescript
+import { Injectable } from '@nestjs/common'
+import { InjectRepository } from '@nestjs/typeorm'
+
+import { IUserRepository } from '../../domain/repositories/user-repository.interface'
+import { User } from '../../domain/entities/user.entity'
+
+import { UserSchema } from './user.schema'
+import { UserMapper } from '../mappers/user.mapper'
+```
+
+### Error Handling
+- Use domain-specific exceptions (e.g., `UserNotFoundException`)
+- Create custom exceptions in `domain/exceptions/`
+- Never expose internal errors to clients
+- Log errors appropriately with context
+
+### Comments and Documentation
+- Write JSDoc comments for public methods and classes
+- Explain WHY, not WHAT (code should be self-documenting for WHAT)
+- Keep comments updated when code changes
+- Use TODO comments for temporary solutions: `// TODO: Refactor this when...`
+
+## Source of Truth Files
+
+These files serve as the single source of truth for different aspects of the project:
+
+1. **[context/db-structure.sql](context/db-structure.sql)** - Complete database schema
+   - Update whenever migrations are created
+   - Reference this when implementing repositories or queries
+
+2. **[src/user/README.md](src/user/README.md)** - Architecture reference
+   - Example of correct hexagonal architecture implementation
+   - Use as template for new modules
+
+3. **[CLAUDE.md](CLAUDE.md)** - This file
+   - Project conventions and standards
+   - Development workflows
+   - Architectural decisions
+
+## Working with Claude Agents
+
+### Available Agents
+Agents are defined in `.claude/agents/` directory. Use them for specialized tasks:
+
+- `/test-reviewer` - Reviews test coverage and quality
+- `/architecture-mentor` - Validates hexagonal architecture compliance
+- `/code-reviewer` - Reviews code for standards and best practices
+- `/migration-helper` - Assists with database migrations
+
+### Available Slash Commands
+Custom commands defined in `.claude/commands/`:
+
+- `/new-module <name>` - Scaffolds a new module with hexagonal architecture
+- `/review-pr` - Prepares code for PR review
+- `/update-db-context` - Updates context/db-structure.sql from migrations
+
 ## Pull Request Template
 
 When creating PRs, use the template in `.github/pull_request_template.md`:
