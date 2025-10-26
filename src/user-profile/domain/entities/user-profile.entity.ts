@@ -159,7 +159,7 @@ export class UserProfile {
     }
 
     // Validate blood type
-    if(data.bloodType !== undefined) {
+    if(data.bloodType) {
       const validBloodTypes = [ 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-' ]
 
       if(!validBloodTypes.includes(data.bloodType.toUpperCase())) {
