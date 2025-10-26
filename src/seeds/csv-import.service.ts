@@ -2,15 +2,19 @@ import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 
-import * as bcrypt from 'bcrypt'
 import { parse } from 'csv-parse/sync'
 import * as fs from 'fs'
 import { v7 as uuidv7 } from 'uuid'
 
+import { Guardian } from '../guardian/domain/entities/guardian.entity'
 import { GuardianSchema } from '../guardian/infrastructure/persistence/guardian.schema'
+import { Role } from '../role/domain/entities/role.entity'
+import { RoleName } from '../role/domain/value-objects/role-name.vo'
 import { RoleSchema } from '../role/infrastructure/persistence/role.schema'
 import { UserRoleSchema } from '../role/infrastructure/persistence/user-role.schema'
+import { User } from '../user/domain/entities/user.entity'
 import { UserSchema } from '../user/infrastructure/persistence/user.schema'
+import { UserProfile } from '../user-profile/domain/entities/user-profile.entity'
 import { UserProfileSchema } from '../user-profile/infrastructure/persistence/user-profile.schema'
 
 interface ImportResult {
@@ -92,7 +96,7 @@ export class CsvImportService {
 
       // Obtener rol "user" por defecto
       const userRole = await this.roleRepository.findOne({
-        where: { name: 'user' }
+        where: { name: RoleName.USER }
       })
 
       if(!userRole) {
@@ -129,39 +133,99 @@ export class CsvImportService {
             continue
           }
 
-          // Crear usuario
-          const userUuid = uuidv7()
-          const hashedPassword = await bcrypt.hash(dni, 10)
+          // ===== USAR ENTIDADES DE DOMINIO =====
 
-          const user = this.userRepository.create({
-            uuid           : userUuid,
-            slug           : this.generateSlug(firstName, lastName),
+          // 1. Crear usuario usando entidad de dominio (maneja validación y hash de password)
+          const user = await User.create(
             firstName,
             lastName,
             email,
-            dni,
-            password       : hashedPassword,
+            dni, // Password inicial es el DNI (se hashea automáticamente en User.create)
+            false
+          )
+
+          // 2. Persistir usuario
+          const userPrimitives = user.toPrimitives()
+          const userSchema = this.userRepository.create({
+            uuid           : userPrimitives.uuid,
+            slug           : userPrimitives.slug,
+            firstName      : userPrimitives.firstName,
+            lastName       : userPrimitives.lastName,
+            email          : userPrimitives.email,
+            password       : userPrimitives.hashedPassword,
             isActive       : true,
-            isGoogleAccount: false
+            isGoogleAccount: userPrimitives.isGoogleAccount
           })
+          const savedUser = await this.userRepository.save(userSchema)
 
-          await this.userRepository.save(user)
-
-          // Asignar rol "user"
-          const userRoleUuid = uuidv7()
+          // 3. Asignar rol "user"
           const userRoleAssignment = this.userRoleRepository.create({
-            uuid: userRoleUuid,
-            user: { uuid: userUuid } as UserSchema,
+            uuid: uuidv7(),
+            user: { uuid: savedUser.uuid } as UserSchema,
             role: { uuid: userRole.uuid } as RoleSchema
           })
 
           await this.userRoleRepository.save(userRoleAssignment)
 
-          // Crear perfil de usuario
-          await this.createUserProfile(row, userUuid)
+          // 4. Crear perfil usando entidad de dominio
+          const userProfile = UserProfile.make(savedUser.uuid, {
+            userUuid            : savedUser.uuid,
+            lastNames           : row['Apellidos completos']?.trim(),
+            firstNames          : row['Nombres completos']?.trim(),
+            gender              : row['Género']?.trim(),
+            age                 : this.parseNumber(row['Edad']),
+            birthDate           : this.parseDate(row['Fecha de nacimiento']),
+            status              : row['Estado']?.trim(),
+            alias               : row['Alias (nombre con el que se te conoce normalmente)']?.trim(),
+            hasUniform          : this.parseBoolean(row['Tiene polo']),
+            shirtSize           : row['Talla de polo (se considera talla completa)']?.trim(),
+            pantsSize           : row['Talla de pantalón']?.trim(),
+            shoeSize            : row['Talla de zapato']?.trim(),
+            heightMeters        : this.parseDecimal(row['Talla (en metros, por ejemplo: 1.67)']),
+            weightKg            : this.parseDecimal(row['Peso (en kg, por ejemplo: 58)']),
+            healthInsurance     : row['Seguro de Salud']?.trim(),
+            bloodType           : row['Tipo de sangre']?.trim(),
+            allergies           : row['Elementos a los que es alérgico (alimentos, medicamentos, etc.)']?.trim(),
+            disabilityOrDisorder: row['Discapacidad, molestia física, transtorno psicológico diagnosticado (discapacidad visual, problemas de columna, transtorno de ansiedad, etc.)']?.trim(),
+            enrollmentDate      : this.parseDate(row['Fecha de inscripción (tome como referencia el primer día de ensayo)']),
+            currentResidence    : row['Residencia actual (lugar en el que vive actualmente)']?.trim(),
+            professionalGoal    : row['Qué quiere ser después de terminar el colegio (médico, arquitecto, ganadero, electricista, policía, presidente, etc.)']?.trim(),
+            favoriteHero        : row['Superhéroe o superheroína favorito(a) ']?.trim()
+          })
 
-          // Crear apoderados
-          await this.createGuardians(row, userUuid)
+          // Persistir perfil
+          const profilePrimitives = userProfile.toPrimitives()
+          const profileSchema = this.userProfileRepository.create({
+            uuid                : profilePrimitives.uuid,
+            user                : { uuid: savedUser.uuid } as UserSchema,
+            lastNames           : profilePrimitives.lastNames,
+            firstNames          : profilePrimitives.firstNames,
+            gender              : profilePrimitives.gender,
+            age                 : profilePrimitives.age,
+            birthDate           : profilePrimitives.birthDate,
+            status              : profilePrimitives.status,
+            alias               : profilePrimitives.alias,
+            hasUniform          : profilePrimitives.hasUniform,
+            shirtSize           : profilePrimitives.shirtSize,
+            pantsSize           : profilePrimitives.pantsSize,
+            shoeSize            : profilePrimitives.shoeSize,
+            heightMeters        : profilePrimitives.heightMeters,
+            weightKg            : profilePrimitives.weightKg,
+            healthInsurance     : profilePrimitives.healthInsurance,
+            bloodType           : profilePrimitives.bloodType,
+            allergies           : profilePrimitives.allergies,
+            disabilityOrDisorder: profilePrimitives.disabilityOrDisorder,
+            enrollmentDate      : profilePrimitives.enrollmentDate,
+            currentResidence    : profilePrimitives.currentResidence,
+            professionalGoal    : profilePrimitives.professionalGoal,
+            favoriteHero        : profilePrimitives.favoriteHero,
+            registrationDate    : profilePrimitives.registrationDate
+          })
+
+          await this.userProfileRepository.save(profileSchema)
+
+          // 5. Crear apoderados usando entidad de dominio
+          await this.createGuardians(row, savedUser.uuid)
 
           result.imported++
           this.logger.log(`Fila ${rowIndex}: Usuario ${email} importado exitosamente`)
@@ -188,38 +252,6 @@ export class CsvImportService {
     }
   }
 
-  private async createUserProfile(row: CsvRow, userUuid: string): Promise<void> {
-    const profileUuid = uuidv7()
-
-    const profile = this.userProfileRepository.create({
-      uuid                : profileUuid,
-      user                : { uuid: userUuid } as UserSchema,
-      lastNames           : row['Apellidos completos']?.trim(),
-      firstNames          : row['Nombres completos']?.trim(),
-      gender              : row['Género']?.trim(),
-      age                 : this.parseNumber(row['Edad']),
-      birthDate           : this.parseDate(row['Fecha de nacimiento']),
-      status              : row['Estado']?.trim(),
-      alias               : row['Alias (nombre con el que se te conoce normalmente)']?.trim(),
-      hasUniform          : this.parseBoolean(row['Tiene polo']),
-      shirtSize           : row['Talla de polo (se considera talla completa)']?.trim(),
-      pantsSize           : row['Talla de pantalón']?.trim(),
-      shoeSize            : row['Talla de zapato']?.trim(),
-      heightMeters        : this.parseDecimal(row['Talla (en metros, por ejemplo: 1.67)']),
-      weightKg            : this.parseDecimal(row['Peso (en kg, por ejemplo: 58)']),
-      healthInsurance     : row['Seguro de Salud']?.trim(),
-      bloodType           : row['Tipo de sangre']?.trim(),
-      allergies           : row['Elementos a los que es alérgico (alimentos, medicamentos, etc.)']?.trim(),
-      disabilityOrDisorder: row['Discapacidad, molestia física, transtorno psicológico diagnosticado (discapacidad visual, problemas de columna, transtorno de ansiedad, etc.)']?.trim(),
-      enrollmentDate      : this.parseDate(row['Fecha de inscripción (tome como referencia el primer día de ensayo)']),
-      currentResidence    : row['Residencia actual (lugar en el que vive actualmente)']?.trim(),
-      professionalGoal    : row['Qué quiere ser después de terminar el colegio (médico, arquitecto, ganadero, electricista, policía, presidente, etc.)']?.trim(),
-      favoriteHero        : row['Superhéroe o superheroína favorito(a) ']?.trim()
-    })
-
-    await this.userProfileRepository.save(profile)
-  }
-
   private async createGuardians(row: CsvRow, userUuid: string): Promise<void> {
     // Apoderado principal
     const primaryGuardianName = row['Nombres y apellidos completos de apoderado (a)']?.trim()
@@ -227,17 +259,25 @@ export class CsvImportService {
     const primaryGuardianEmail = row['Correo electrónico del apoderado (a)']?.trim()
 
     if(primaryGuardianName) {
-      const guardianUuid = uuidv7()
-      const guardian = this.guardianRepository.create({
-        uuid       : guardianUuid,
-        user       : { uuid: userUuid } as UserSchema,
+      const guardian = Guardian.make({
+        userUuid,
         fullName   : primaryGuardianName,
         phone      : primaryGuardianPhone,
         email      : primaryGuardianEmail,
         contactType: 'primary'
       })
 
-      await this.guardianRepository.save(guardian)
+      const guardianPrimitives = guardian.toPrimitives()
+      const guardianSchema = this.guardianRepository.create({
+        uuid       : guardianPrimitives.uuid,
+        user       : { uuid: userUuid } as UserSchema,
+        fullName   : guardianPrimitives.fullName,
+        phone      : guardianPrimitives.phone,
+        email      : guardianPrimitives.email,
+        contactType: guardianPrimitives.contactType
+      })
+
+      await this.guardianRepository.save(guardianSchema)
     }
 
     // Contacto adicional
@@ -245,16 +285,23 @@ export class CsvImportService {
     const secondaryGuardianPhone = row['Número de celular adicional']?.trim()
 
     if(secondaryGuardianName) {
-      const guardianUuid = uuidv7()
-      const guardian = this.guardianRepository.create({
-        uuid       : guardianUuid,
-        user       : { uuid: userUuid } as UserSchema,
+      const guardian = Guardian.make({
+        userUuid,
         fullName   : secondaryGuardianName,
         phone      : secondaryGuardianPhone,
         contactType: 'secondary'
       })
 
-      await this.guardianRepository.save(guardian)
+      const guardianPrimitives = guardian.toPrimitives()
+      const guardianSchema = this.guardianRepository.create({
+        uuid       : guardianPrimitives.uuid,
+        user       : { uuid: userUuid } as UserSchema,
+        fullName   : guardianPrimitives.fullName,
+        phone      : guardianPrimitives.phone,
+        contactType: guardianPrimitives.contactType
+      })
+
+      await this.guardianRepository.save(guardianSchema)
     }
   }
 
@@ -274,42 +321,53 @@ export class CsvImportService {
 
     // Buscar o crear rol superadmin
     let superadminRole = await this.roleRepository.findOne({
-      where: { name: 'superadmin' }
+      where: { name: RoleName.SUPERADMIN }
     })
 
     if(!superadminRole) {
-      const roleUuid = uuidv7()
+      // Usar entidad de dominio para crear rol
+      const role = Role.make({
+        name       : RoleName.SUPERADMIN,
+        description: 'Super Administrator with full access'
+      })
+
+      const rolePrimitives = role.toPrimitives()
 
       superadminRole = this.roleRepository.create({
-        uuid       : roleUuid,
-        name       : 'superadmin',
-        description: 'Super Administrator with full access'
+        uuid       : rolePrimitives.uuid,
+        name       : rolePrimitives.name,
+        description: rolePrimitives.description
       })
       await this.roleRepository.save(superadminRole)
     }
 
-    // Crear usuario superadmin
-    const userUuid = uuidv7()
-    const hashedPassword = await bcrypt.hash('admin123', 10) // Password temporal
+    // Crear usuario superadmin usando entidad de dominio
+    const superadmin = await User.create(
+      'Super',
+      'Admin',
+      superadminEmail,
+      'admin123', // Password temporal (se hashea automáticamente)
+      false
+    )
 
-    const superadmin = this.userRepository.create({
-      uuid           : userUuid,
-      slug           : 'superadmin',
-      firstName      : 'Super',
-      lastName       : 'Admin',
-      email          : superadminEmail,
-      password       : hashedPassword,
+    const userPrimitives = superadmin.toPrimitives()
+    const superadminSchema = this.userRepository.create({
+      uuid           : userPrimitives.uuid,
+      slug           : userPrimitives.slug,
+      firstName      : userPrimitives.firstName,
+      lastName       : userPrimitives.lastName,
+      email          : userPrimitives.email,
+      password       : userPrimitives.hashedPassword,
       isActive       : true,
-      isGoogleAccount: false
+      isGoogleAccount: userPrimitives.isGoogleAccount
     })
 
-    await this.userRepository.save(superadmin)
+    await this.userRepository.save(superadminSchema)
 
     // Asignar rol superadmin
-    const userRoleUuid = uuidv7()
     const userRole = this.userRoleRepository.create({
-      uuid: userRoleUuid,
-      user: { uuid: userUuid } as UserSchema,
+      uuid: uuidv7(),
+      user: { uuid: superadminSchema.uuid } as UserSchema,
       role: { uuid: superadminRole.uuid } as RoleSchema
     })
 
@@ -318,15 +376,7 @@ export class CsvImportService {
     this.logger.log(`Superadmin creado: ${superadminEmail}`)
   }
 
-  // Métodos auxiliares
-  private generateSlug(firstName: string, lastName: string): string {
-    return `${firstName.toLowerCase()}-${lastName.toLowerCase()}`
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9-]/g, '-')
-      .replace(/-+/g, '-')
-  }
-
+  // Métodos auxiliares de parsing (sin lógica de dominio)
   private parseNumber(value: string | undefined): number | undefined {
     if(!value || value.trim() === '') return undefined
     const num = parseInt(value.trim())
@@ -336,7 +386,6 @@ export class CsvImportService {
 
   private parseDecimal(value: string | undefined): number | undefined {
     if(!value || value.trim() === '') return undefined
-    // Manejar formato con coma o punto
     const normalized = value.trim().replace(',', '.')
     const num = parseFloat(normalized)
 
@@ -357,7 +406,6 @@ export class CsvImportService {
     if(!value || value.trim() === '') return undefined
 
     try {
-      // Formato MM/DD/YYYY del CSV
       const parts = value.trim().split('/')
 
       if(parts.length === 3) {

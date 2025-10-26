@@ -1,7 +1,10 @@
 import { NestFactory } from '@nestjs/core'
-import { AppModule } from '../app.module'
-import { CsvImportService } from './csv-import.service'
+
 import * as path from 'path'
+
+import { AppModule } from '../app.module'
+
+import { CsvImportService } from './csv-import.service'
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule)
@@ -20,6 +23,7 @@ async function bootstrap() {
 
     // 3. Importar usuarios desde CSV
     const csvPath = process.argv[2] || path.join(process.cwd(), 'data.csv')
+
     console.log(`\n📊 Importando usuarios desde: ${csvPath}`)
 
     const result = await csvImportService.importFromCsv(csvPath)
@@ -29,7 +33,7 @@ async function bootstrap() {
     console.log(`   • Saltados: ${result.skipped}`)
     console.log(`   • Errores: ${result.errors}`)
 
-    if (result.errorDetails.length > 0) {
+    if(result.errorDetails.length > 0) {
       console.log('\n⚠️  Detalles de errores:')
       result.errorDetails.forEach(detail => {
         console.log(`   Fila ${detail.row} (${detail.email}): ${detail.error}`)
@@ -60,7 +64,7 @@ async function createRoles(app: any) {
       [ roleData.name ]
     )
 
-    if (existing.length === 0) {
+    if(existing.length === 0) {
       await dataSource.query(
         'INSERT INTO roles (uuid, name, description, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW())',
         [ uuidv7(), roleData.name, roleData.description ]

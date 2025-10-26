@@ -144,4 +144,21 @@ export class User {
   getUpdatedAt(): Date {
     return this.updatedAt
   }
+
+  /**
+   * Convert to plain object for persistence
+   */
+  toPrimitives() {
+    return {
+      uuid           : this.uuid,
+      firstName      : this.name.getFirstName(),
+      lastName       : this.name.getLastName(),
+      email          : this.email.getValue(),
+      hashedPassword : this.password.getValue(),
+      slug           : this.slug,
+      isGoogleAccount: this.isGoogleAccount,
+      createdAt      : this.createdAt,
+      updatedAt      : this.updatedAt
+    }
+  }
 }

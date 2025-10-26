@@ -206,6 +206,9 @@ Este proyecto implementa **arquitectura hexagonal** para garantizar separación 
 1. **Single Responsibility**: Un controller = un método HTTP, un use case = una operación
 2. **Dependency Inversion**: Las dependencias apuntan hacia el dominio
 3. **Separation of Concerns**: Capas claramente definidas
+4. **Domain-Driven Logic**: TODA la lógica de negocio está en el dominio, NO en servicios
+5. **Factory Methods**: NUNCA usar `repository.create()` directamente, siempre usar métodos `make()` de entidades
+6. **Value Objects for Constants**: Usar enums y constantes en Value Objects para evitar valores mágicos repetidos
 
 #### Estructura de Módulos
 
@@ -264,6 +267,203 @@ El módulo de usuarios es el **estándar arquitectónico** para todos los módul
 - **Mapper**: `UserMapper` - traduce entre dominio y persistencia
 
 **Ver documentación completa:** [src/user/README.md](src/user/README.md)
+
+### Clean Architecture Rules - CRITICAL
+
+**ESTAS REGLAS SON OBLIGATORIAS Y DEBEN SEGUIRSE SIEMPRE:**
+
+#### 1. Lógica de Negocio SOLO en Dominio
+
+❌ **MAL - Lógica en Servicio:**
+```typescript
+// service.ts
+async createUser(data) {
+  const hashedPassword = await bcrypt.hash(data.password, 10) // ❌ Lógica de hash en servicio
+  const user = this.repository.create({...}) // ❌ Crear directamente
+  return await this.repository.save(user)
+}
+```
+
+✅ **BIEN - Lógica en Entidad:**
+```typescript
+// user.entity.ts
+static async create(firstName, lastName, email, plainPassword) {
+  const passwordVO = Password.create(plainPassword)
+  const hashedPasswordVO = await passwordVO.hash() // ✅ Hash en Value Object
+  return new User(...) // ✅ Validaciones en constructor
+}
+
+// service.ts
+async createUser(data) {
+  const user = await User.create(...) // ✅ Usa factory method de dominio
+  const userPrimitives = user.toPrimitives()
+  const userSchema = this.repository.create(userPrimitives)
+  return await this.repository.save(userSchema)
+}
+```
+
+#### 2. Factory Methods Obligatorios
+
+❌ **MAL - Uso Directo de create():**
+```typescript
+const user = this.repository.create({
+  uuid: uuidv7(),
+  email: email.toLowerCase(), // ❌ Validación en servicio
+  password: await bcrypt.hash(password, 10), // ❌ Hash en servicio
+  ...
+})
+```
+
+✅ **BIEN - Factory Method:**
+```typescript
+// Entidad con factory method
+static make(data: UserData): User {
+  // Validaciones
+  if (!data.email) throw new UserBadFieldException('email', 'Email requerido')
+
+  return new User(uuidv7(), data.email.toLowerCase(), ...)
+}
+
+// Servicio usa factory
+const user = User.make(data)
+const userPrimitives = user.toPrimitives()
+const userSchema = this.repository.create(userPrimitives)
+```
+
+#### 3. Excepciones Específicas por Módulo
+
+Cada módulo debe tener su propia excepción `BadFieldException`:
+
+```typescript
+// common/exceptions/custom-error.ts
+export class CustomError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = this.constructor.name
+  }
+}
+
+// user/domain/exceptions/user-bad-field.exception.ts
+export class UserBadFieldException extends CustomError {
+  constructor(field: string, reason: string) {
+    super(`Campo de usuario inválido: ${field}. ${reason}`)
+  }
+}
+
+// user-profile/domain/exceptions/user-profile-bad-field.exception.ts
+export class UserProfileBadFieldException extends CustomError {
+  constructor(field: string, reason: string) {
+    super(`Campo de perfil inválido: ${field}. ${reason}`)
+  }
+}
+```
+
+#### 4. Value Objects para Constantes
+
+❌ **MAL - Valores Repetidos:**
+```typescript
+// En varios archivos...
+const allowedRoles = ['superadmin', 'admin', 'user'] // ❌ Repetido
+if (role === 'superadmin') { ... } // ❌ String mágico
+```
+
+✅ **BIEN - Enum + Value Object:**
+```typescript
+// role/domain/value-objects/role-name.vo.ts
+export enum RoleName {
+  SUPERADMIN = 'superadmin',
+  ADMIN = 'admin',
+  USER = 'user'
+}
+
+export class RoleNameVO {
+  private constructor(private readonly value: RoleName) {}
+
+  static create(name: string): RoleNameVO {
+    if (!Object.values(RoleName).includes(name as RoleName)) {
+      const allowed = Object.values(RoleName).join(', ')
+      throw new RoleBadFieldException('name', `Rol inválido. Permitidos: ${allowed}`)
+    }
+    return new RoleNameVO(name as RoleName)
+  }
+
+  getValue(): string { return this.value }
+  isSuperadmin(): boolean { return this.value === RoleName.SUPERADMIN }
+}
+
+// Uso
+const userRole = await this.roleRepository.findOne({
+  where: { name: RoleName.USER } // ✅ Usa enum, no string
+})
+```
+
+#### 5. Métodos de Entidad
+
+Toda entidad DEBE tener:
+
+1. **Constructor privado**: Para forzar uso de factory methods
+2. **Factory method `make()`**: Para crear nuevas instancias con validaciones
+3. **Factory method `reconstruct()`**: Para reconstruir desde DB (sin validaciones)
+4. **Método `toPrimitives()`**: Para convertir a objeto plano para persistencia
+5. **Getters**: Para acceder a propiedades privadas
+6. **Métodos de negocio**: update(), validate(), etc.
+
+```typescript
+export class User {
+  private uuid: string
+  private email: Email
+  private password: Password
+
+  private constructor(...) { } // ✅ Privado
+
+  static async make(data: UserData): Promise<User> { // ✅ Factory
+    // Validaciones aquí
+    return new User(...)
+  }
+
+  static reconstruct(...): User { // ✅ Reconstruct
+    return new User(...)
+  }
+
+  toPrimitives() { // ✅ Serialización
+    return {
+      uuid: this.uuid,
+      email: this.email.getValue(),
+      ...
+    }
+  }
+
+  getEmail(): string { return this.email.getValue() } // ✅ Getter
+
+  async updatePassword(newPassword: string) { // ✅ Lógica de negocio
+    this.password = await Password.create(newPassword).hash()
+  }
+}
+```
+
+#### 6. Servicios SOLO para Orquestación
+
+Los servicios (application layer) SOLO deben:
+- ✅ Orquestar llamadas entre entidades y repositorios
+- ✅ Manejar transacciones
+- ✅ Coordinar múltiples operaciones
+- ❌ NO deben tener lógica de validación
+- ❌ NO deben tener lógica de transformación de datos
+- ❌ NO deben hacer hashing, slugs, o cualquier lógica de dominio
+
+#### 7. Validación en Capas
+
+```
+┌─────────────────────────────────┐
+│ Presentation (DTOs)             │ ← Validación de formato (class-validator)
+├─────────────────────────────────┤
+│ Application (Use Cases)         │ ← Orquestación, NO validación
+├─────────────────────────────────┤
+│ Domain (Entities & VOs)         │ ← Validación de reglas de negocio ✅
+├─────────────────────────────────┤
+│ Infrastructure (Repositories)   │ ← Persistencia, NO validación
+└─────────────────────────────────┘
+```
 
 ### Database & ORM
 
