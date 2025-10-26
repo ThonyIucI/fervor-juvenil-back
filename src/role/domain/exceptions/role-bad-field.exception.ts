@@ -5,6 +5,6 @@ import { CustomError } from '../../../common/exceptions/custom-error'
  */
 export class RoleBadFieldException extends CustomError {
   constructor(field: string, reason: string) {
-    super(`Campo de rol inválido: ${field}. ${reason}`, 400)
+    super(`Campo de rol inválido: ${field}. ${reason}`)
   }
 }

@@ -4,7 +4,7 @@ import { Repository } from 'typeorm'
 
 import { parse } from 'csv-parse/sync'
 import * as fs from 'fs'
-import { v7 as uuidv7 } from 'uuid'
+import { uuidv7 } from 'uuidv7'
 
 import { Guardian } from '../guardian/domain/entities/guardian.entity'
 import { GuardianSchema } from '../guardian/infrastructure/persistence/guardian.schema'

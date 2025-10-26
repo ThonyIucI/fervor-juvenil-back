@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt'
 
 import { GuardianSchema } from '../guardian/infrastructure/persistence/guardian.schema'
 import { RoleSchema } from '../role/infrastructure/persistence/role.schema'
+import { UserRoleSchema } from '../role/infrastructure/persistence/user-role.schema'
 import { UserSchema } from '../user/infrastructure/persistence/user.schema'
 import { UserProfileSchema } from '../user-profile/infrastructure/persistence/user-profile.schema'
 
@@ -34,6 +35,11 @@ describe('CsvImportService', () => {
     save   : jest.fn()
   }
 
+  const mockUserRoleRepository = {
+    create: jest.fn(),
+    save  : jest.fn()
+  }
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -53,6 +59,10 @@ describe('CsvImportService', () => {
         {
           provide : getRepositoryToken(RoleSchema),
           useValue: mockRoleRepository
+        },
+        {
+          provide : getRepositoryToken(UserRoleSchema),
+          useValue: mockUserRoleRepository
         }
       ]
     }).compile()
