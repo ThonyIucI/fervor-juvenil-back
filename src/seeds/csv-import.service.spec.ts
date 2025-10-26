@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { getRepositoryToken } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
 
 import * as bcrypt from 'bcrypt'
 
@@ -13,11 +12,6 @@ import { CsvImportService } from './csv-import.service'
 
 describe('CsvImportService', () => {
   let service: CsvImportService
-  let userRepository: Repository<UserSchema>
-  let userProfileRepository: Repository<UserProfileSchema>
-  let guardianRepository: Repository<GuardianSchema>
-  let roleRepository: Repository<RoleSchema>
-
   const mockUserRepository = {
     create : jest.fn(),
     save   : jest.fn(),
@@ -64,10 +58,6 @@ describe('CsvImportService', () => {
     }).compile()
 
     service = module.get<CsvImportService>(CsvImportService)
-    userRepository = module.get<Repository<UserSchema>>(getRepositoryToken(UserSchema))
-    userProfileRepository = module.get<Repository<UserProfileSchema>>(getRepositoryToken(UserProfileSchema))
-    guardianRepository = module.get<Repository<GuardianSchema>>(getRepositoryToken(GuardianSchema))
-    roleRepository = module.get<Repository<RoleSchema>>(getRepositoryToken(RoleSchema))
   })
 
   afterEach(() => {

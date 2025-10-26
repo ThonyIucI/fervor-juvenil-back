@@ -6,8 +6,8 @@ import { SnakeNamingStrategy } from 'typeorm-naming-strategies'
 import { join } from 'path'
 
 import { AuthModule } from './auth/auth.module'
-import { SeedsModule } from './seeds/seeds.module'
 import { HealthController } from './health/health.controller'
+import { SeedsModule } from './seeds/seeds.module'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 

@@ -1,17 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
+
 import * as bcrypt from 'bcrypt'
-import * as fs from 'fs'
-import * as path from 'path'
 import { parse } from 'csv-parse/sync'
+import * as fs from 'fs'
 import { v7 as uuidv7 } from 'uuid'
 
-import { UserSchema } from '../user/infrastructure/persistence/user.schema'
-import { UserProfileSchema } from '../user-profile/infrastructure/persistence/user-profile.schema'
 import { GuardianSchema } from '../guardian/infrastructure/persistence/guardian.schema'
 import { RoleSchema } from '../role/infrastructure/persistence/role.schema'
 import { UserRoleSchema } from '../role/infrastructure/persistence/user-role.schema'
+import { UserSchema } from '../user/infrastructure/persistence/user.schema'
+import { UserProfileSchema } from '../user-profile/infrastructure/persistence/user-profile.schema'
 
 interface ImportResult {
   imported: number
@@ -72,9 +72,9 @@ export class CsvImportService {
 
   async importFromCsv(csvPath: string): Promise<ImportResult> {
     const result: ImportResult = {
-      imported: 0,
-      skipped: 0,
-      errors: 0,
+      imported    : 0,
+      skipped     : 0,
+      errors      : 0,
       errorDetails: []
     }
 
@@ -82,10 +82,10 @@ export class CsvImportService {
       // Leer archivo CSV
       const fileContent = fs.readFileSync(csvPath, 'utf-8')
       const records: CsvRow[] = parse(fileContent, {
-        columns: true,
+        columns         : true,
         skip_empty_lines: true,
-        trim: true,
-        bom: true
+        trim            : true,
+        bom             : true
       })
 
       this.logger.log(`Procesando ${records.length} registros del CSV...`)
@@ -95,11 +95,12 @@ export class CsvImportService {
         where: { name: 'user' }
       })
 
-      if (!userRole) {
+      if(!userRole) {
         throw new Error('Rol "user" no encontrado. Ejecuta las migraciones primero.')
       }
 
       let rowIndex = 1
+
       for (const row of records) {
         rowIndex++
 
@@ -111,7 +112,7 @@ export class CsvImportService {
           const lastName = row['Apellidos completos']?.trim()
 
           // Saltar filas vacías o incompletas
-          if (!email || !dni || !firstName || !lastName || email.length < 5) {
+          if(!email || !dni || !firstName || !lastName || email.length < 5) {
             this.logger.warn(`Fila ${rowIndex}: Datos incompletos, saltando...`)
             result.skipped++
             continue
@@ -122,7 +123,7 @@ export class CsvImportService {
             where: { email }
           })
 
-          if (existingUser) {
+          if(existingUser) {
             this.logger.warn(`Fila ${rowIndex}: Usuario con email ${email} ya existe, saltando...`)
             result.skipped++
             continue
@@ -133,14 +134,14 @@ export class CsvImportService {
           const hashedPassword = await bcrypt.hash(dni, 10)
 
           const user = this.userRepository.create({
-            uuid: userUuid,
-            slug: this.generateSlug(firstName, lastName),
+            uuid           : userUuid,
+            slug           : this.generateSlug(firstName, lastName),
             firstName,
             lastName,
             email,
             dni,
-            password: hashedPassword,
-            isActive: true,
+            password       : hashedPassword,
+            isActive       : true,
             isGoogleAccount: false
           })
 
@@ -153,6 +154,7 @@ export class CsvImportService {
             user: { uuid: userUuid } as UserSchema,
             role: { uuid: userRole.uuid } as RoleSchema
           })
+
           await this.userRoleRepository.save(userRoleAssignment)
 
           // Crear perfil de usuario
@@ -166,8 +168,9 @@ export class CsvImportService {
         } catch (error) {
           result.errors++
           const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+
           result.errorDetails.push({
-            row: rowIndex,
+            row  : rowIndex,
             email: row['Email Address'] || 'N/A',
             error: errorMessage
           })
@@ -189,29 +192,29 @@ export class CsvImportService {
     const profileUuid = uuidv7()
 
     const profile = this.userProfileRepository.create({
-      uuid: profileUuid,
-      user: { uuid: userUuid } as UserSchema,
-      lastNames: row['Apellidos completos']?.trim(),
-      firstNames: row['Nombres completos']?.trim(),
-      gender: row['Género']?.trim(),
-      age: this.parseNumber(row['Edad']),
-      birthDate: this.parseDate(row['Fecha de nacimiento']),
-      status: row['Estado']?.trim(),
-      alias: row['Alias (nombre con el que se te conoce normalmente)']?.trim(),
-      hasUniform: this.parseBoolean(row['Tiene polo']),
-      shirtSize: row['Talla de polo (se considera talla completa)']?.trim(),
-      pantsSize: row['Talla de pantalón']?.trim(),
-      shoeSize: row['Talla de zapato']?.trim(),
-      heightMeters: this.parseDecimal(row['Talla (en metros, por ejemplo: 1.67)']),
-      weightKg: this.parseDecimal(row['Peso (en kg, por ejemplo: 58)']),
-      healthInsurance: row['Seguro de Salud']?.trim(),
-      bloodType: row['Tipo de sangre']?.trim(),
-      allergies: row['Elementos a los que es alérgico (alimentos, medicamentos, etc.)']?.trim(),
+      uuid                : profileUuid,
+      user                : { uuid: userUuid } as UserSchema,
+      lastNames           : row['Apellidos completos']?.trim(),
+      firstNames          : row['Nombres completos']?.trim(),
+      gender              : row['Género']?.trim(),
+      age                 : this.parseNumber(row['Edad']),
+      birthDate           : this.parseDate(row['Fecha de nacimiento']),
+      status              : row['Estado']?.trim(),
+      alias               : row['Alias (nombre con el que se te conoce normalmente)']?.trim(),
+      hasUniform          : this.parseBoolean(row['Tiene polo']),
+      shirtSize           : row['Talla de polo (se considera talla completa)']?.trim(),
+      pantsSize           : row['Talla de pantalón']?.trim(),
+      shoeSize            : row['Talla de zapato']?.trim(),
+      heightMeters        : this.parseDecimal(row['Talla (en metros, por ejemplo: 1.67)']),
+      weightKg            : this.parseDecimal(row['Peso (en kg, por ejemplo: 58)']),
+      healthInsurance     : row['Seguro de Salud']?.trim(),
+      bloodType           : row['Tipo de sangre']?.trim(),
+      allergies           : row['Elementos a los que es alérgico (alimentos, medicamentos, etc.)']?.trim(),
       disabilityOrDisorder: row['Discapacidad, molestia física, transtorno psicológico diagnosticado (discapacidad visual, problemas de columna, transtorno de ansiedad, etc.)']?.trim(),
-      enrollmentDate: this.parseDate(row['Fecha de inscripción (tome como referencia el primer día de ensayo)']),
-      currentResidence: row['Residencia actual (lugar en el que vive actualmente)']?.trim(),
-      professionalGoal: row['Qué quiere ser después de terminar el colegio (médico, arquitecto, ganadero, electricista, policía, presidente, etc.)']?.trim(),
-      favoriteHero: row['Superhéroe o superheroína favorito(a) ']?.trim()
+      enrollmentDate      : this.parseDate(row['Fecha de inscripción (tome como referencia el primer día de ensayo)']),
+      currentResidence    : row['Residencia actual (lugar en el que vive actualmente)']?.trim(),
+      professionalGoal    : row['Qué quiere ser después de terminar el colegio (médico, arquitecto, ganadero, electricista, policía, presidente, etc.)']?.trim(),
+      favoriteHero        : row['Superhéroe o superheroína favorito(a) ']?.trim()
     })
 
     await this.userProfileRepository.save(profile)
@@ -223,16 +226,17 @@ export class CsvImportService {
     const primaryGuardianPhone = row['Número de celular de apoderado (a)']?.trim()
     const primaryGuardianEmail = row['Correo electrónico del apoderado (a)']?.trim()
 
-    if (primaryGuardianName) {
+    if(primaryGuardianName) {
       const guardianUuid = uuidv7()
       const guardian = this.guardianRepository.create({
-        uuid: guardianUuid,
-        user: { uuid: userUuid } as UserSchema,
-        fullName: primaryGuardianName,
-        phone: primaryGuardianPhone,
-        email: primaryGuardianEmail,
+        uuid       : guardianUuid,
+        user       : { uuid: userUuid } as UserSchema,
+        fullName   : primaryGuardianName,
+        phone      : primaryGuardianPhone,
+        email      : primaryGuardianEmail,
         contactType: 'primary'
       })
+
       await this.guardianRepository.save(guardian)
     }
 
@@ -240,15 +244,16 @@ export class CsvImportService {
     const secondaryGuardianName = row['Nombre adicional de adulto encargado en caso no esté el apoderado']?.trim()
     const secondaryGuardianPhone = row['Número de celular adicional']?.trim()
 
-    if (secondaryGuardianName) {
+    if(secondaryGuardianName) {
       const guardianUuid = uuidv7()
       const guardian = this.guardianRepository.create({
-        uuid: guardianUuid,
-        user: { uuid: userUuid } as UserSchema,
-        fullName: secondaryGuardianName,
-        phone: secondaryGuardianPhone,
+        uuid       : guardianUuid,
+        user       : { uuid: userUuid } as UserSchema,
+        fullName   : secondaryGuardianName,
+        phone      : secondaryGuardianPhone,
         contactType: 'secondary'
       })
+
       await this.guardianRepository.save(guardian)
     }
   }
@@ -261,8 +266,9 @@ export class CsvImportService {
       where: { email: superadminEmail }
     })
 
-    if (existingSuperadmin) {
+    if(existingSuperadmin) {
       this.logger.log('Superadmin ya existe, saltando...')
+
       return
     }
 
@@ -271,11 +277,12 @@ export class CsvImportService {
       where: { name: 'superadmin' }
     })
 
-    if (!superadminRole) {
+    if(!superadminRole) {
       const roleUuid = uuidv7()
+
       superadminRole = this.roleRepository.create({
-        uuid: roleUuid,
-        name: 'superadmin',
+        uuid       : roleUuid,
+        name       : 'superadmin',
         description: 'Super Administrator with full access'
       })
       await this.roleRepository.save(superadminRole)
@@ -286,13 +293,13 @@ export class CsvImportService {
     const hashedPassword = await bcrypt.hash('admin123', 10) // Password temporal
 
     const superadmin = this.userRepository.create({
-      uuid: userUuid,
-      slug: 'superadmin',
-      firstName: 'Super',
-      lastName: 'Admin',
-      email: superadminEmail,
-      password: hashedPassword,
-      isActive: true,
+      uuid           : userUuid,
+      slug           : 'superadmin',
+      firstName      : 'Super',
+      lastName       : 'Admin',
+      email          : superadminEmail,
+      password       : hashedPassword,
+      isActive       : true,
       isGoogleAccount: false
     })
 
@@ -305,6 +312,7 @@ export class CsvImportService {
       user: { uuid: userUuid } as UserSchema,
       role: { uuid: superadminRole.uuid } as RoleSchema
     })
+
     await this.userRoleRepository.save(userRole)
 
     this.logger.log(`Superadmin creado: ${superadminEmail}`)
@@ -320,39 +328,46 @@ export class CsvImportService {
   }
 
   private parseNumber(value: string | undefined): number | undefined {
-    if (!value || value.trim() === '') return undefined
+    if(!value || value.trim() === '') return undefined
     const num = parseInt(value.trim())
+
     return isNaN(num) ? undefined : num
   }
 
   private parseDecimal(value: string | undefined): number | undefined {
-    if (!value || value.trim() === '') return undefined
+    if(!value || value.trim() === '') return undefined
     // Manejar formato con coma o punto
     const normalized = value.trim().replace(',', '.')
     const num = parseFloat(normalized)
+
     return isNaN(num) ? undefined : num
   }
 
   private parseBoolean(value: string | undefined): boolean | undefined {
-    if (!value) return undefined
+    if(!value) return undefined
     const normalized = value.trim().toLowerCase()
-    if (normalized === 'sí' || normalized === 'si' || normalized === 'yes') return true
-    if (normalized === 'no') return false
+
+    if(normalized === 'sí' || normalized === 'si' || normalized === 'yes') return true
+    if(normalized === 'no') return false
+
     return undefined
   }
 
   private parseDate(value: string | undefined): Date | undefined {
-    if (!value || value.trim() === '') return undefined
+    if(!value || value.trim() === '') return undefined
 
     try {
       // Formato MM/DD/YYYY del CSV
       const parts = value.trim().split('/')
-      if (parts.length === 3) {
+
+      if(parts.length === 3) {
         const month = parseInt(parts[0]) - 1
         const day = parseInt(parts[1])
         const year = parseInt(parts[2])
+
         return new Date(year, month, day)
       }
+
       return undefined
     } catch {
       return undefined
