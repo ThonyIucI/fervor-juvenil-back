@@ -7,6 +7,7 @@ import { join } from 'path'
 
 import { AuthModule } from './auth/auth.module'
 import { HealthController } from './health/health.controller'
+import { SeedsModule } from './seeds/seeds.module'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 
@@ -54,7 +55,8 @@ import { AppService } from './app.service'
       },
       inject: [ ConfigService ]
     }),
-    AuthModule
+    AuthModule,
+    SeedsModule
   ],
   controllers: [ AppController, HealthController ],
   providers  : [ AppService ]
