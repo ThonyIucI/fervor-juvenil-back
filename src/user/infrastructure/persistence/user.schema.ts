@@ -2,9 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToOne,
   PrimaryColumn,
   UpdateDateColumn
 } from 'typeorm'
+
+import { UserProfileSchema } from '../../../user-profile/infrastructure/persistence/user-profile.schema'
 
 @Entity({ name: 'users' })
 export class UserSchema {
@@ -34,6 +37,9 @@ export class UserSchema {
 
   @Column({ default: false })
     isGoogleAccount: boolean
+
+  @OneToOne(() => UserProfileSchema, (profile) => profile.user)
+    profile?: UserProfileSchema
 
   @CreateDateColumn()
     createdAt: Date

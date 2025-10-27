@@ -2,7 +2,11 @@ import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { JwtModule } from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
+import { TypeOrmModule } from '@nestjs/typeorm'
 
+import { GetUserRolesUseCase } from 'src/role/application/use-cases/get-user-roles.use-case'
+import { GetUserRolesWithDetailsUseCase } from 'src/role/application/use-cases/get-user-roles-with-details.use-case'
+import { UserRoleSchema } from 'src/role/infrastructure/persistence/user-role.schema'
 import { UserModule } from 'src/user/user.module'
 
 import { JwtStrategy } from './strategies/jwt.strategy'
@@ -14,6 +18,7 @@ import { AuthService } from './auth.service'
     UserModule,
     ConfigModule,
     PassportModule,
+    TypeOrmModule.forFeature([ UserRoleSchema ]),
     JwtModule.registerAsync({
       imports   : [ ConfigModule ],
       inject    : [ ConfigService ],
@@ -24,6 +29,11 @@ import { AuthService } from './auth.service'
     })
   ],
   controllers: [ AuthController ],
-  providers  : [ AuthService, JwtStrategy ]
+  providers  : [
+    AuthService,
+    JwtStrategy,
+    GetUserRolesUseCase,
+    GetUserRolesWithDetailsUseCase
+  ]
 })
 export class AuthModule {}

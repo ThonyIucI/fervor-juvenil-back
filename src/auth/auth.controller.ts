@@ -21,12 +21,16 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto)
+    const result = await this.authService.register(registerDto)
+
+    return { data: result }
   }
 
   @Post('login')
   async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto)
+    const result = await this.authService.login(dto)
+
+    return { data: result }
   }
 
   // Todo: add getProfile service
