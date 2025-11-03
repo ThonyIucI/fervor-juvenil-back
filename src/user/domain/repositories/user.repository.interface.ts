@@ -1,4 +1,8 @@
 import { User } from '../entities/user.entity'
+import {
+  PaginatedUserResult,
+  UserQueryParams
+} from '../types/user-query.types'
 
 export interface UserWithProfile {
   user: User
@@ -11,7 +15,7 @@ export interface IUserRepository {
   findByEmail(email: string): Promise<User | null>
   findAll(): Promise<User[]>
   findByUuidWithProfile(uuid: string): Promise<UserWithProfile | null>
-  findAllWithProfile(): Promise<UserWithProfile[]>
+  findPaginated(params: UserQueryParams): Promise<PaginatedUserResult>
   delete(uuid: string): Promise<void>
 }
 

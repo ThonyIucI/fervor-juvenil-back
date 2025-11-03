@@ -2,9 +2,17 @@ import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 
+import { SortOrder } from '../../../common/types/pagination.types'
 import { UserProfileMapper } from '../../../user-profile/infrastructure/mappers/user-profile.mapper'
 import { User } from '../../domain/entities/user.entity'
-import { IUserRepository, UserWithProfile } from '../../domain/repositories/user.repository.interface'
+import {
+  IUserRepository,
+  UserWithProfile
+} from '../../domain/repositories/user.repository.interface'
+import {
+  PaginatedUserResult,
+  UserQueryParams
+} from '../../domain/types/user-query.types'
 import { UserMapper } from '../mappers/user.mapper'
 
 import { UserSchema } from './user.schema'
@@ -55,33 +63,54 @@ export class TypeOrmUserRepository implements IUserRepository {
     }
   }
 
-  async findAllWithProfile(): Promise<UserWithProfile[]> {
-    const schemas = await this.repository.find({
-      relations: [ 'profile' ],
-      select   : {
-        uuid           : true,
-        firstName      : true,
-        lastName       : true,
-        email          : true,
-        slug           : true,
-        isGoogleAccount: true,
-        isActive       : true,
-        createdAt      : true,
-        updatedAt      : true,
-        profile        : {
-          uuid     : true,
-          gender   : true,
-          age      : true,
-          status   : true,
-          birthDate: true
-        }
-      }
-    })
+  async findPaginated(params: UserQueryParams): Promise<PaginatedUserResult> {
+    // Create query builder
+    const qb = this.repository.createQueryBuilder('user')
 
-    return schemas.map((schema) => ({
+    // Join with profile (left join to include users without profile)
+    qb.leftJoinAndSelect('user.profile', 'profile')
+
+    // Apply filters
+    if(params.isActive !== undefined) {
+      qb.andWhere('user.isActive = :isActive', { isActive: params.isActive })
+    }
+
+    // Search by name or email
+    if(params.search) {
+      qb.andWhere(
+        '(LOWER(user.firstName) LIKE LOWER(:search) OR LOWER(user.lastName) LIKE LOWER(:search) OR LOWER(user.email) LIKE LOWER(:search))',
+        { search: `%${params.search}%` }
+      )
+    }
+
+    // Apply sorting - default: active users first, then by lastName
+    if(params.isActive === undefined) {
+      qb.addOrderBy('user.isActive', 'DESC')
+    }
+
+    // Then apply user's requested sorting
+    const sortField = params.sortBy || 'lastName'
+    const sortOrder = params.sortOrder || SortOrder.ASC
+
+    qb.addOrderBy(`user.${sortField}`, sortOrder)
+
+    // Apply pagination
+    const skip = (params.page - 1) * params.limit
+
+    qb.skip(skip).take(params.limit)
+
+    // Execute query
+    const [ schemas, total ] = await qb.getManyAndCount()
+
+    // Map to domain
+    const users: UserWithProfile[] = schemas.map((schema) => ({
       user   : UserMapper.toDomain(schema),
-      profile: schema.profile ? UserProfileMapper.toDomain(schema.profile) : null
+      profile: schema.profile
+        ? UserProfileMapper.toDomain(schema.profile)
+        : null
     }))
+
+    return { users, total }
   }
 
   async delete(uuid: string): Promise<void> {

@@ -1,8 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing'
 
+import { SortOrder } from '../../../common/types/pagination.types'
 import { UserProfile } from '../../../user-profile/domain/entities/user-profile.entity'
 import { User } from '../../domain/entities/user.entity'
 import { USER_REPOSITORY } from '../../domain/repositories/user.repository.interface'
+import { UserQueryParams } from '../../domain/types/user-query.types'
 
 import { ListAllUsersWithProfileUseCase } from './list-all-users-with-profile.use-case'
 
@@ -17,7 +19,7 @@ describe('ListAllUsersWithProfileUseCase', () => {
     'john@example.com',
     'hashed-password',
     'john-doe',
-    false,
+    true,
     new Date(),
     new Date()
   )
@@ -29,7 +31,7 @@ describe('ListAllUsersWithProfileUseCase', () => {
     'jane@example.com',
     'hashed-password',
     'jane-smith',
-    false,
+    true,
     new Date(),
     new Date()
   )
@@ -60,7 +62,7 @@ describe('ListAllUsersWithProfileUseCase', () => {
 
   beforeEach(async () => {
     mockUserRepository = {
-      findAllWithProfile: jest.fn()
+      findPaginated: jest.fn()
     }
 
     const module: TestingModule = await Test.createTestingModule({
@@ -73,54 +75,143 @@ describe('ListAllUsersWithProfileUseCase', () => {
       ]
     }).compile()
 
-    useCase = module.get<ListAllUsersWithProfileUseCase>(ListAllUsersWithProfileUseCase)
+    useCase = module.get<ListAllUsersWithProfileUseCase>(
+      ListAllUsersWithProfileUseCase
+    )
   })
 
   describe('execute', () => {
-    it('should return all users with their profiles', async () => {
+    it('should return paginated users with default params', async () => {
       // Arrange
-      mockUserRepository.findAllWithProfile.mockResolvedValue([
-        { user: mockUser1, profile: mockProfile1 },
-        { user: mockUser2, profile: mockProfile2 }
-      ])
+      mockUserRepository.findPaginated.mockResolvedValue({
+        users: [
+          { user: mockUser1, profile: mockProfile1 },
+          { user: mockUser2, profile: mockProfile2 }
+        ],
+        total: 2
+      })
 
       // Act
       const result = await useCase.execute()
 
       // Assert
-      expect(mockUserRepository.findAllWithProfile).toHaveBeenCalled()
-      expect(result).toHaveLength(2)
-      expect(result[0]).toHaveProperty('user')
-      expect(result[0]).toHaveProperty('profile')
-      expect(result[1]).toHaveProperty('user')
-      expect(result[1]).toHaveProperty('profile')
+      expect(mockUserRepository.findPaginated).toHaveBeenCalledWith({
+        page     : 1,
+        limit    : 10,
+        sortBy   : 'lastName',
+        sortOrder: SortOrder.ASC,
+        isActive : undefined,
+        search   : undefined
+      })
+      expect(result.users).toHaveLength(2)
+      expect(result.total).toBe(2)
+    })
+
+    it('should return paginated users with custom params', async () => {
+      // Arrange
+      const params: UserQueryParams = {
+        page     : 2,
+        limit    : 5,
+        sortBy   : 'email',
+        sortOrder: SortOrder.DESC,
+        isActive : true,
+        search   : 'John'
+      }
+
+      mockUserRepository.findPaginated.mockResolvedValue({
+        users: [ { user: mockUser1, profile: mockProfile1 } ],
+        total: 1
+      })
+
+      // Act
+      const result = await useCase.execute(params)
+
+      // Assert
+      expect(mockUserRepository.findPaginated).toHaveBeenCalledWith(params)
+      expect(result.users).toHaveLength(1)
     })
 
     it('should return users with null profiles when profiles do not exist', async () => {
       // Arrange
-      mockUserRepository.findAllWithProfile.mockResolvedValue([
-        { user: mockUser1, profile: null },
-        { user: mockUser2, profile: mockProfile2 }
-      ])
+      mockUserRepository.findPaginated.mockResolvedValue({
+        users: [
+          { user: mockUser1, profile: null },
+          { user: mockUser2, profile: mockProfile2 }
+        ],
+        total: 2
+      })
 
       // Act
       const result = await useCase.execute()
 
       // Assert
-      expect(result).toHaveLength(2)
-      expect(result[0].profile).toBeNull()
-      expect(result[1].profile).not.toBeNull()
+      expect(result.users).toHaveLength(2)
+      expect(result.users[0].profile).toBeNull()
+      expect(result.users[1].profile).not.toBeNull()
     })
 
     it('should return empty array when no users exist', async () => {
       // Arrange
-      mockUserRepository.findAllWithProfile.mockResolvedValue([])
+      mockUserRepository.findPaginated.mockResolvedValue({
+        users: [],
+        total: 0
+      })
 
       // Act
       const result = await useCase.execute()
 
       // Assert
-      expect(result).toEqual([])
+      expect(result.users).toEqual([])
+      expect(result.total).toBe(0)
+    })
+
+    it('should filter by active users', async () => {
+      // Arrange
+      const params: UserQueryParams = {
+        page     : 1,
+        limit    : 10,
+        sortBy   : 'lastName',
+        sortOrder: SortOrder.ASC,
+        isActive : true
+      }
+
+      mockUserRepository.findPaginated.mockResolvedValue({
+        users: [
+          { user: mockUser1, profile: mockProfile1 },
+          { user: mockUser2, profile: mockProfile2 }
+        ],
+        total: 2
+      })
+
+      // Act
+      const result = await useCase.execute(params)
+
+      // Assert
+      expect(mockUserRepository.findPaginated).toHaveBeenCalledWith(params)
+      expect(result.users).toHaveLength(2)
+    })
+
+    it('should apply search filter', async () => {
+      // Arrange
+      const params: UserQueryParams = {
+        page     : 1,
+        limit    : 10,
+        sortBy   : 'lastName',
+        sortOrder: SortOrder.ASC,
+        search   : 'Jane'
+      }
+
+      mockUserRepository.findPaginated.mockResolvedValue({
+        users: [ { user: mockUser2, profile: mockProfile2 } ],
+        total: 1
+      })
+
+      // Act
+      const result = await useCase.execute(params)
+
+      // Assert
+      expect(mockUserRepository.findPaginated).toHaveBeenCalledWith(params)
+      expect(result.users).toHaveLength(1)
     })
   })
 })
