@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer'
-import { IsBoolean, IsEnum, IsOptional } from 'class-validator'
+import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator'
 
 import { PaginationDto } from '../../../common/dto/pagination.dto'
 
@@ -12,6 +12,7 @@ export enum UserSortField {
   EMAIL = 'email',
   CREATED_AT = 'createdAt',
   IS_ACTIVE = 'isActive',
+  DNI = 'dni',
 }
 
 /**
@@ -29,7 +30,12 @@ export class GetPaginatedUsersDto extends PaginationDto {
     sortOrder?: 'ASC' | 'DESC' = 'ASC'
 
   @IsOptional()
+  @IsString({ message: 'search debe ser una cadena de texto' })
     search?: string
+
+  @IsOptional()
+  @IsString({ message: 'dni debe ser una cadena de texto' })
+    dni?: string
 
   @IsOptional()
   @Type(() => Boolean)

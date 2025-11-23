@@ -19,6 +19,7 @@ describe('ListAllUsersWithProfileUseCase', () => {
     'john@example.com',
     'hashed-password',
     'john-doe',
+    null,
     true,
     new Date(),
     new Date()
@@ -31,6 +32,7 @@ describe('ListAllUsersWithProfileUseCase', () => {
     'jane@example.com',
     'hashed-password',
     'jane-smith',
+    null,
     true,
     new Date(),
     new Date()

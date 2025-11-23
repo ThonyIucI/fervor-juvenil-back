@@ -48,9 +48,11 @@ async function bootstrap() {
 }
 
 async function createRoles(app: any) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { DataSource } = require('typeorm')
   const dataSource: typeof DataSource = app.get(DataSource)
-  const { v7: uuidv7 } = require('uuid')
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { uuidv7 } = require('uuidv7')
 
   const roles = [
     { name: 'superadmin', description: 'Super Administrator with full access' },

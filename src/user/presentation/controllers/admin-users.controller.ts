@@ -37,7 +37,7 @@ export class AdminUsersController {
    * Query params:
    * - page: number (default: 1)
    * - limit: number (default: 10, max: 100)
-   * - sortBy: firstName | lastName | email | createdAt | isActive (default: lastName)
+   * - sortBy: firstName | lastName | email | createdAt | isActive (default: lastName) | dni
    * - sortOrder: ASC | DESC (default: ASC)
    * - isActive: boolean (filter by active status)
    * - search: string (search in name or email)
@@ -57,7 +57,8 @@ export class AdminUsersController {
       sortBy  : query.sortBy,
       sortOrder,
       isActive: query.isActive,
-      search  : query.search
+      search  : query.search,
+      dni     : query.dni
     })
 
     // Transform to resources

@@ -141,6 +141,7 @@ export class CsvImportService {
             lastName,
             email,
             dni, // Password inicial es el DNI (se hashea automáticamente en User.create)
+            dni, // Guardar DNI en el campo dni
             false
           )
 
@@ -153,6 +154,7 @@ export class CsvImportService {
             lastName       : userPrimitives.lastName,
             email          : userPrimitives.email,
             password       : userPrimitives.hashedPassword,
+            dni            : userPrimitives.dni,
             isActive       : true,
             isGoogleAccount: userPrimitives.isGoogleAccount
           })
@@ -347,6 +349,7 @@ export class CsvImportService {
       'Admin',
       superadminEmail,
       'admin123', // Password temporal (se hashea automáticamente)
+      null, // No tiene DNI
       false
     )
 
@@ -358,6 +361,7 @@ export class CsvImportService {
       lastName       : userPrimitives.lastName,
       email          : userPrimitives.email,
       password       : userPrimitives.hashedPassword,
+      dni            : userPrimitives.dni,
       isActive       : true,
       isGoogleAccount: userPrimitives.isGoogleAccount
     })

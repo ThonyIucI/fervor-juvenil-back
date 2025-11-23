@@ -10,6 +10,7 @@ export class UserMapper {
       schema.email,
       schema.password,
       schema.slug,
+      schema.dni,
       schema.isGoogleAccount,
       schema.createdAt,
       schema.updatedAt
@@ -25,6 +26,7 @@ export class UserMapper {
     schema.lastName = domain.getLastName()
     schema.email = domain.getEmail()
     schema.password = domain.getHashedPassword()
+    schema.dni = domain.getDni()
     schema.isGoogleAccount = domain.getIsGoogleAccount()
     schema.createdAt = domain.getCreatedAt()
     schema.updatedAt = domain.getUpdatedAt()

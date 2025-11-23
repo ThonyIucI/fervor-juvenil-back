@@ -3,6 +3,7 @@ import {
   SearchParams,
   SortParams
 } from '../../../common/types/pagination.types'
+import { UserWithProfile } from '../repositories/user.repository.interface'
 
 /**
  * Campos por los que se puede ordenar usuarios
@@ -13,12 +14,14 @@ export type UserSortField =
   | 'email'
   | 'createdAt'
   | 'isActive'
+  | 'dni'
 
 /**
  * Filtros específicos para usuarios
  */
 export interface UserFilters {
   isActive?: boolean
+  dni?: string
 }
 
 /**
@@ -34,6 +37,6 @@ export interface UserQueryParams
  * Resultado de consulta paginada de usuarios
  */
 export interface PaginatedUserResult {
-  users: any[] // Será UserWithProfile[] en producción
+  users: UserWithProfile[]
   total: number
 }

@@ -75,6 +75,11 @@ export class TypeOrmUserRepository implements IUserRepository {
       qb.andWhere('user.isActive = :isActive', { isActive: params.isActive })
     }
 
+    // Filter by DNI
+    if(params.dni) {
+      qb.andWhere('user.dni LIKE :dni', { dni: `%${params.dni}%` })
+    }
+
     // Search by name or email
     if(params.search) {
       qb.andWhere(

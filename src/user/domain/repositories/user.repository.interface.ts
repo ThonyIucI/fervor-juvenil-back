@@ -1,3 +1,4 @@
+import { UserProfile } from '../../../user-profile/domain/entities/user-profile.entity'
 import { User } from '../entities/user.entity'
 import {
   PaginatedUserResult,
@@ -6,7 +7,7 @@ import {
 
 export interface UserWithProfile {
   user: User
-  profile: any | null // We'll use any for now since it's from another module
+  profile: UserProfile | null
 }
 
 export interface IUserRepository {

@@ -18,6 +18,7 @@ describe('GetCurrentUserProfileUseCase', () => {
     'john@example.com',
     'hashed-password',
     'john-doe',
+    null,
     false,
     new Date(),
     new Date()
