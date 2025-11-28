@@ -10,6 +10,7 @@ export class User {
   private email: Email
   private password: Password
   private slug: string
+  private dni: string | null
   private isGoogleAccount: boolean
   private createdAt: Date
   private updatedAt: Date
@@ -20,6 +21,7 @@ export class User {
     email: Email,
     password: Password,
     slug: string,
+    dni: string | null = null,
     isGoogleAccount: boolean = false,
     createdAt?: Date,
     updatedAt?: Date
@@ -29,6 +31,7 @@ export class User {
     this.email = email
     this.password = password
     this.slug = slug
+    this.dni = dni
     this.isGoogleAccount = isGoogleAccount
     this.createdAt = createdAt || new Date()
     this.updatedAt = updatedAt || new Date()
@@ -39,6 +42,7 @@ export class User {
     lastName: string,
     email: string,
     plainPassword: string,
+    dni: string | null = null,
     isGoogleAccount: boolean = false
   ): Promise<User> {
     const nameVO = UserName.create(firstName, lastName)
@@ -52,6 +56,7 @@ export class User {
       emailVO,
       hashedPasswordVO,
       nameVO.getSlug(),
+      dni,
       isGoogleAccount
     )
   }
@@ -63,6 +68,7 @@ export class User {
     email: string,
     hashedPassword: string,
     slug: string,
+    dni: string | null,
     isGoogleAccount: boolean,
     createdAt: Date,
     updatedAt: Date
@@ -77,6 +83,7 @@ export class User {
       emailVO,
       passwordVO,
       slug,
+      dni,
       isGoogleAccount,
       createdAt,
       updatedAt
@@ -133,6 +140,10 @@ export class User {
     return this.slug
   }
 
+  getDni(): string | null {
+    return this.dni
+  }
+
   getIsGoogleAccount(): boolean {
     return this.isGoogleAccount
   }
@@ -156,6 +167,7 @@ export class User {
       email          : this.email.getValue(),
       hashedPassword : this.password.getValue(),
       slug           : this.slug,
+      dni            : this.dni,
       isGoogleAccount: this.isGoogleAccount,
       createdAt      : this.createdAt,
       updatedAt      : this.updatedAt

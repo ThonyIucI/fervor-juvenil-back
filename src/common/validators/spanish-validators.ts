@@ -87,3 +87,31 @@ export function MinLengthSpanish(
     })
   }
 }
+
+/** Decorador para (Min) que genera mensaje español */
+export function MinSpanish(
+  min: number,
+  fieldName?: string,
+  validationOptions?: ValidationOptions
+) {
+  return function (object: object, propertyName: string) {
+    const name = fieldName || propertyName
+
+    registerDecorator({
+      name   : 'minSpanish',
+      target : object.constructor,
+      propertyName,
+      options: {
+        message: `${name} debe tener al menos ${min} caracteres`,
+        ...validationOptions
+      },
+      validator: {
+        validate(value: unknown) {
+          if(typeof value !== 'string') return false
+
+          return value.length >= min
+        }
+      }
+    })
+  }
+}
