@@ -38,7 +38,7 @@ export class UserSchema {
   @Column({ default: false })
     isGoogleAccount: boolean
 
-  @OneToOne(() => UserProfileSchema, (profile) => profile.user)
+  @OneToOne(() => UserProfileSchema, (profile) => profile.user, { nullable: true })
     profile?: UserProfileSchema
 
   @CreateDateColumn()

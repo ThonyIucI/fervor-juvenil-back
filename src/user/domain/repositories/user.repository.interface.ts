@@ -1,8 +1,13 @@
+import { UserProfile } from '../../../user-profile/domain/entities/user-profile.entity'
 import { User } from '../entities/user.entity'
+import {
+  PaginatedUserResult,
+  UserQueryParams
+} from '../types/user-query.types'
 
 export interface UserWithProfile {
   user: User
-  profile: any | null // We'll use any for now since it's from another module
+  profile: UserProfile | null
 }
 
 export interface IUserRepository {
@@ -11,7 +16,7 @@ export interface IUserRepository {
   findByEmail(email: string): Promise<User | null>
   findAll(): Promise<User[]>
   findByUuidWithProfile(uuid: string): Promise<UserWithProfile | null>
-  findAllWithProfile(): Promise<UserWithProfile[]>
+  findPaginated(params: UserQueryParams): Promise<PaginatedUserResult>
   delete(uuid: string): Promise<void>
 }
 
