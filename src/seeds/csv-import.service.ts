@@ -60,6 +60,7 @@ interface CsvRow {
 @Injectable()
 export class CsvImportService {
   private readonly logger = new Logger(CsvImportService.name)
+  private readonly BATCH_SIZE = 100
 
   constructor(
     @InjectRepository(UserSchema)
@@ -72,7 +73,7 @@ export class CsvImportService {
     private readonly roleRepository: Repository<RoleSchema>,
     @InjectRepository(UserRoleSchema)
     private readonly userRoleRepository: Repository<UserRoleSchema>
-  ) {}
+  ) { }
 
   async importFromCsv(csvPath: string): Promise<ImportResult> {
     const result: ImportResult = {
@@ -103,45 +104,40 @@ export class CsvImportService {
         throw new Error('Rol "user" no encontrado. Ejecuta las migraciones primero.')
       }
 
+      const existingEmails: Set<string> = new Set()
+      const usersToInsert: UserSchema[] = []
+      const profilesToInsert: UserProfileSchema[] = []
+      const rolesToInsert: UserRoleSchema[] = []
+      const guardiansToInsert: GuardianSchema[] = []
+
       let rowIndex = 1
 
       for (const row of records) {
         rowIndex++
 
         try {
-          // Validar datos mínimos requeridos
-          const email = row['Email Address']?.trim()
+          const originalEmail = row['Email Address']?.trim()
           const dni = row['N° de DNI']?.trim()
           const firstName = row['Nombres completos']?.trim()
           const lastName = row['Apellidos completos']?.trim()
 
-          // Saltar filas vacías o incompletas
-          if(!email || !dni || !firstName || !lastName || email.length < 5) {
-            this.logger.warn(`Fila ${rowIndex}: Datos incompletos, saltando...`)
+          if(!originalEmail || !dni || !firstName || !lastName || originalEmail.length < 5) {
             result.skipped++
             continue
           }
 
-          // Verificar si el usuario ya existe
-          const existingUser = await this.userRepository.findOne({
-            where: { email }
-          })
+          // Determinar email final (original o modificado)
+          const finalEmail = await this.resolveEmail(originalEmail, existingEmails)
 
-          if(existingUser) {
-            this.logger.warn(`Fila ${rowIndex}: Usuario con email ${email} ya existe, saltando...`)
-            result.skipped++
-            continue
-          }
+          existingEmails.add(finalEmail)
 
-          // ===== USAR ENTIDADES DE DOMINIO =====
-
-          // 1. Crear usuario usando entidad de dominio (maneja validación y hash de password)
+          // Crear usuario
           const user = await User.create(
             firstName,
             lastName,
-            email,
-            dni, // Password inicial es el DNI (se hashea automáticamente en User.create)
-            dni, // Guardar DNI en el campo dni
+            finalEmail,
+            dni,
+            dni,
             false
           )
 
@@ -158,20 +154,21 @@ export class CsvImportService {
             isActive       : true,
             isGoogleAccount: userPrimitives.isGoogleAccount
           })
-          const savedUser = await this.userRepository.save(userSchema)
 
-          // 3. Asignar rol "user"
+          usersToInsert.push(userSchema)
+
+          // Crear asignación de rol
           const userRoleAssignment = this.userRoleRepository.create({
             uuid: uuidv7(),
-            user: { uuid: savedUser.uuid } as UserSchema,
+            user: { uuid: userSchema.uuid } as UserSchema,
             role: { uuid: userRole.uuid } as RoleSchema
           })
 
-          await this.userRoleRepository.save(userRoleAssignment)
+          rolesToInsert.push(userRoleAssignment)
 
-          // 4. Crear perfil usando entidad de dominio
-          const userProfile = UserProfile.make(savedUser.uuid, {
-            userUuid            : savedUser.uuid,
+          // Crear perfil
+          const userProfile = UserProfile.make(userSchema.uuid, {
+            userUuid            : userSchema.uuid,
             lastNames           : row['Apellidos completos']?.trim(),
             firstNames          : row['Nombres completos']?.trim(),
             gender              : row['Género']?.trim(),
@@ -195,11 +192,10 @@ export class CsvImportService {
             favoriteHero        : row['Superhéroe o superheroína favorito(a) ']?.trim()
           })
 
-          // Persistir perfil
           const profilePrimitives = userProfile.toPrimitives()
           const profileSchema = this.userProfileRepository.create({
             uuid                : profilePrimitives.uuid,
-            user                : { uuid: savedUser.uuid } as UserSchema,
+            user                : { uuid: userSchema.uuid } as UserSchema,
             lastNames           : profilePrimitives.lastNames,
             firstNames          : profilePrimitives.firstNames,
             gender              : profilePrimitives.gender,
@@ -224,13 +220,19 @@ export class CsvImportService {
             registrationDate    : profilePrimitives.registrationDate
           })
 
-          await this.userProfileRepository.save(profileSchema)
+          profilesToInsert.push(profileSchema)
 
-          // 5. Crear apoderados usando entidad de dominio
-          await this.createGuardians(row, savedUser.uuid)
+          // 5. Crear apoderados
+          const userGuardians = this.createGuardiansData(row, userSchema.uuid)
+
+          guardiansToInsert.push(...userGuardians)
 
           result.imported++
-          this.logger.log(`Fila ${rowIndex}: Usuario ${email} importado exitosamente`)
+
+          // Procesar por lotes
+          if(usersToInsert.length >= this.BATCH_SIZE) {
+            await this.processBatch(usersToInsert, profilesToInsert, rolesToInsert, guardiansToInsert)
+          }
         } catch (error) {
           result.errors++
           const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
@@ -244,6 +246,11 @@ export class CsvImportService {
         }
       }
 
+      // Procesar los registros restantes
+      if(usersToInsert.length > 0) {
+        await this.processBatch(usersToInsert, profilesToInsert, rolesToInsert, guardiansToInsert)
+      }
+
       this.logger.log('Importación completada')
       this.logger.log(`Importados: ${result.imported}, Saltados: ${result.skipped}, Errores: ${result.errors}`)
 
@@ -254,7 +261,90 @@ export class CsvImportService {
     }
   }
 
-  private async createGuardians(row: CsvRow, userUuid: string): Promise<void> {
+  /**
+   * Procesa un lote completo de inserciones
+   */
+  private async processBatch(
+    usersToInsert: UserSchema[],
+    profilesToInsert: UserProfileSchema[],
+    rolesToInsert: UserRoleSchema[],
+    guardiansToInsert: GuardianSchema[]
+  ): Promise<void> {
+    try {
+      await this.userRepository.insert(usersToInsert)
+      await this.userProfileRepository.insert(profilesToInsert)
+      await this.userRoleRepository.insert(rolesToInsert)
+
+      if(guardiansToInsert.length > 0) {
+        await this.guardianRepository.insert(guardiansToInsert)
+      }
+
+      this.logger.log(`Procesado lote de ${usersToInsert.length} usuarios`)
+
+      // Limpiar arrays para el siguiente lote
+      usersToInsert.length = 0
+      profilesToInsert.length = 0
+      rolesToInsert.length = 0
+      guardiansToInsert.length = 0
+    } catch (error) {
+      this.logger.error('Error al procesar lote', error)
+      throw error
+    }
+  }
+
+  /**
+   * Resuelve el email, modificándolo si ya existe
+   */
+  private async resolveEmail(originalEmail: string, existingEmails: Set<string>): Promise<string> {
+    if(!existingEmails.has(originalEmail.toLocaleLowerCase())) {
+      return originalEmail
+    }
+
+    // Generar email alternativo con número random
+    let attempts = 0
+    let newEmail = originalEmail
+
+    while (attempts < 10) {
+      const emailParts = originalEmail.split('@')
+      const randomNum = Math.floor(Math.random() * 10)
+
+      if(emailParts.length !== 2) {
+        break
+      }
+
+      newEmail = `${emailParts[0]}${randomNum}@${emailParts[1]}`
+
+      if(!existingEmails.has(newEmail)) {
+        this.logger.warn(`Email ${originalEmail} ya existe, usando ${newEmail} en su lugar`)
+
+        return newEmail
+      }
+
+      attempts++
+    }
+
+    // Si no se pudo generar un email único, usar timestamp
+    const timestamp = Date.now()
+    const emailParts = originalEmail.split('@')
+
+    if(emailParts.length === 2) {
+      newEmail = `${emailParts[0]}${timestamp}@${emailParts[1]}`
+      this.logger.warn(`Email ${originalEmail} ya existe, usando ${newEmail} en su lugar`)
+    }
+
+    return newEmail
+  }
+
+  /**
+   * Crea datos de apoderados para inserción masiva
+   */
+
+  // TODO: Reestructurar información de guardians para:
+  //  - asociar un guardian con varios usuarios
+  //  - poder hacer que tengan roles e inicien sesión
+  private createGuardiansData(row: CsvRow, userUuid: string): GuardianSchema[] {
+    const guardians: GuardianSchema[] = []
+
     // Apoderado principal
     const primaryGuardianName = row['Nombres y apellidos completos de apoderado (a)']?.trim()
     const primaryGuardianPhone = row['Número de celular de apoderado (a)']?.trim()
@@ -279,7 +369,7 @@ export class CsvImportService {
         contactType: guardianPrimitives.contactType
       })
 
-      await this.guardianRepository.save(guardianSchema)
+      guardians.push(guardianSchema)
     }
 
     // Contacto adicional
@@ -303,10 +393,11 @@ export class CsvImportService {
         contactType: guardianPrimitives.contactType
       })
 
-      await this.guardianRepository.save(guardianSchema)
+      guardians.push(guardianSchema)
     }
-  }
 
+    return guardians
+  }
   async createSuperadmin(): Promise<void> {
     const superadminEmail = 'affervorjuvenil@gmail.com'
 
