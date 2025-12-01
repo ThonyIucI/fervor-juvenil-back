@@ -37,11 +37,20 @@ $ npm install
 # development
 $ npm run start
 
-# watch mode
+# watch mode (legacy)
 $ npm run start:dev
+
+# local development with Supabase (RECOMMENDED)
+$ npm run dev:local
+# This command will:
+# 1. Stop any legacy Docker containers
+# 2. Clean the dist/ folder
+# 3. Start Supabase local instance (if not running)
+# 4. Start the NestJS application in watch mode
 
 # production mode
 $ npm run start:prod
+
 ```
 
 ## Run tests

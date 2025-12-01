@@ -14,7 +14,7 @@ import { AppService } from './app.service'
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: '.env',
+      envFilePath: ['.env.local', '.env'],
       isGlobal   : true
     }),
     TypeOrmModule.forRootAsync({
@@ -24,18 +24,19 @@ import { AppService } from './app.service'
 
         // Prioriza DATABASE_URL si está disponible
         if(databaseUrl) {
-          return {
-            type            : 'postgres',
-            url             : databaseUrl,
-            entities        : [ join(__dirname, '**', '*.entity.{ts,js}'), join(__dirname, '**', '*.schema.{ts,js}') ],
-            migrations      : [ join(__dirname, '..', 'migrations', '*.{ts,js}') ],
-            synchronize     : false,
-            namingStrategy  : new SnakeNamingStrategy(),
-            autoLoadEntities: true,
-            ssl             : {
-              rejectUnauthorized: false // Necesario para conexiones remotas como Render
+            const isLocal = databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1');
+            return {
+              type            : 'postgres',
+              url             : databaseUrl,
+              entities        : [ join(__dirname, '**', '*.entity.{ts,js}'), join(__dirname, '**', '*.schema.{ts,js}') ],
+              migrations      : [ join(__dirname, '..', 'migrations', '*.{ts,js}') ],
+              synchronize     : false,
+              namingStrategy  : new SnakeNamingStrategy(),
+              autoLoadEntities: true,
+              ssl             : isLocal ? false : {
+                rejectUnauthorized: false // Necesario para conexiones remotas como Render
+              }
             }
-          }
         }
 
         // Usa variables individuales para desarrollo local
