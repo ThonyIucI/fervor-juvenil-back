@@ -1,5 +1,11 @@
 import { NestFactory } from '@nestjs/core'
 import { NestExpressApplication } from '@nestjs/platform-express'
+import * as crypto from 'crypto'
+
+// Polyfill for Node.js < 19 where global.crypto is not defined
+if (!global.crypto) {
+  global.crypto = crypto as any
+}
 
 import { HttpExceptionFilter } from './common/filters/http-exception.filter'
 import { SpanishValidationPipe } from './common/pipes/validation.pipe'
